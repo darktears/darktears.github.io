@@ -147,15 +147,49 @@ class Demo {
     this._box.position.z = -5;
 
     // Room.
-    const roomGeometry = new THREE.BoxGeometry(10, 2, 10, 10, 2, 10);
-    const roomMaterial = new THREE.MeshBasicMaterial({
-      wireframe: true,
-      opacity: 0.3,
-      transparent: true,
-      side: THREE.BackSide
-    });
-    const room = new THREE.Mesh(roomGeometry, roomMaterial);
+    var roofTexture = new THREE.ImageUtils.loadTexture( 'ceiling.jpg' );
+    roofTexture.wrapS = roofTexture.wrapT = THREE.RepeatWrapping;
+    roofTexture.repeat.set( 8, 8 );
 
+    var wallTexture = new THREE.ImageUtils.loadTexture( 'wall1.jpg' );
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set( 3, 1 );
+
+    var floorTexture = new THREE.ImageUtils.loadTexture( 'floor.jpg' );
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set( 20, 20 );
+
+    var materials = [
+       new THREE.MeshBasicMaterial({
+           map: wallTexture,
+           side: THREE.BackSide
+       }),
+       new THREE.MeshBasicMaterial({
+           map: wallTexture,
+           side: THREE.BackSide
+       }),
+       new THREE.MeshBasicMaterial({
+           map: roofTexture,
+           side: THREE.BackSide
+       }),
+       new THREE.MeshBasicMaterial({
+           map: floorTexture,
+           side: THREE.BackSide
+       }),
+       new THREE.MeshBasicMaterial({
+           map: wallTexture,
+           side: THREE.BackSide
+       }),
+       new THREE.MeshBasicMaterial({
+           map: wallTexture,
+           side: THREE.BackSide
+       })
+    ];
+
+    var multiMaterial = new THREE.MultiMaterial( materials );
+
+    const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
+    const room = new THREE.Mesh(roomGeometry, multiMaterial);
     room.position.z = -5;
 
     this._scene.add(this._box);
