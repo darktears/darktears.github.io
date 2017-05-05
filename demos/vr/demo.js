@@ -190,7 +190,7 @@ class Demo {
 
     const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
     const room = new THREE.Mesh(roomGeometry, multiMaterial);
-    room.position.z = -5;
+    room.position.z = -4;
 
     this._scene.add(this._box);
     this._scene.add(room);
