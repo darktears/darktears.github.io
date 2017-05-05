@@ -144,7 +144,7 @@ class Demo {
     const boxMaterial = new THREE.MeshBasicMaterial({map:osts, side:THREE.DoubleSide});
 
     this._box = new THREE.Mesh(boxGeometry, boxMaterial);
-    this._box.position.z = -5;
+    this._box.position.z = -3;
 
     // Room.
     var roofTexture = new THREE.ImageUtils.loadTexture( 'ceiling.jpg' );
@@ -190,7 +190,7 @@ class Demo {
 
     const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
     const room = new THREE.Mesh(roomGeometry, multiMaterial);
-    room.position.z = -4;
+    room.position.z = -2;
 
     this._scene.add(this._box);
     this._scene.add(room);
