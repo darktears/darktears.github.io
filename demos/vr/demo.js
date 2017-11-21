@@ -344,7 +344,9 @@ class Demo {
 
     // Update the scene and camera matrices.
     this._camera.projectionMatrix.fromArray(projectionMatrix);
+    console.log(projectionMatrix.toString());
     this._scene.matrix.fromArray(viewMatrix);
+    console.log(viewMatrix.toString());
 
     // Tell the scene to update (otherwise it will ignore the change of matrix).
     this._scene.updateMatrixWorld(true);
