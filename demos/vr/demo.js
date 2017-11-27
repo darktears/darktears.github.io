@@ -225,15 +225,15 @@ class Demo {
     console.error('WebVR not supported');
   }
 
-  _createPresentationButton () {
-    this._button = document.createElement('button');
-    this._button.classList.add('vr-toggle');
-    this._button.textContent = 'Enable VR';
-    this._button.addEventListener('click', _ => {
-      this._toggleVR();
-    });
-    document.body.appendChild(this._button);
-  }
+    _createPresentationButton () {
+      this._button = document.createElement('button');
+      this._button.classList.add('vr-toggle');
+      this._button.textContent = 'Enable VR';
+      this._button.addEventListener('click', _ => {
+        this._toggleVR();
+      });
+      document.body.appendChild(this._button);
+    }
 
   _toggleVR () {
     if (this._vr.display.isPresenting) {
