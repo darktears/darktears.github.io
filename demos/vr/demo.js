@@ -115,7 +115,7 @@ class Demo {
   }
 
   createRenderer () {
-    this._renderer = new THREE.WebGLRenderer();
+    this._renderer = new THREE.WebGLRenderer({ antialias : true });
     this._container.appendChild(this._renderer.domElement);
   }
 
