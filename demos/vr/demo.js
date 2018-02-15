@@ -140,8 +140,8 @@ class Demo {
 
     // Box.
     const boxGeometry = new THREE.BoxGeometry(WIDTH, HEIGHT, DEPTH);
-    var osts = new THREE.ImageUtils.loadTexture("osts.jpg"); 
-    const boxMaterial = new THREE.MeshBasicMaterial({map:osts, side:THREE.DoubleSide});
+    var webvr = new THREE.ImageUtils.loadTexture("webvr.jpg"); 
+    const boxMaterial = new THREE.MeshBasicMaterial({map:webvr, side:THREE.DoubleSide});
 
     this._box = new THREE.Mesh(boxGeometry, boxMaterial);
     this._box.position.z = -5;
