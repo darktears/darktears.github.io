@@ -24,7 +24,7 @@
         </a-entity>
         <a-plane width="2" height="1" color="black" position="0 2 0"  visible="false" id="infoBox"></a-plane>
         <a-camera look-controls wasd-controls id="camera"></a-camera>
-        <a-entity laser-controls="hand: right" raycaster="objects: .clickable; interval: 1000;" model="true" id="raycaster" teleport-controls="defaultPlaneSize: 400; cameraRig: #cameraRig; maxLength: 50;"></a-entity>
+        <a-entity laser-controls="hand: right" raycaster="showLine: true; objects: .clickable; interval: 1000;" model="true" id="raycaster" teleport-controls="defaultPlaneSize: 400; cameraRig: #cameraRig; maxLength: 50;"></a-entity>
     </a-scene>
   </body>
 </html>
