@@ -17,7 +17,7 @@
 
 'use strict';
 
-var polyfill = new WebXRPolyfill();
+//var polyfill = new WebXRPolyfill();
 
 class Demo {
 
