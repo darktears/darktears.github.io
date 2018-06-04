@@ -77,11 +77,20 @@ class Demo {
     });
   }
 
+  _checkMagicWindowSupport() {
+    let magicWindowCtx = this._renderer.domElement.getContext('xrpresent');
+    // Check to see if the UA can support a non-exclusive sessions with the given output context.
+    return xrDevice.supportsSession({ outputContext: magicWindowCtx })
+        .then(() => { console.log("Magic Window content is supported!"); })
+        .catch((reason) => { console.log("Magic Window content is not supported: " + reason); });
+  }
+
   _onXRAvailable(device) {
     this._xrDevice = device;
     this._xrDevice.supportsSession({ exclusive: true }).then(() => {
       this._createPresentationButton();
     }).catch((err) => {
+      _checkMagicWindowSupport();
       console.log("VR not supported: " + err);
     });  
   }
