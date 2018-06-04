@@ -1,0 +1,30 @@
+<html>
+	<head>
+		<title>WebXR Demo</title>
+		<meta name="viewport" content="width=device-width">
+		<style>
+			html, body {
+				padding: 0;
+				margin: 0;
+				user-select: none;
+			}
+			.vr-toggle {
+				position: fixed;
+				top: 16px;
+				left: 16px;
+				background: #44C1B7;
+				color: #FFF;
+				padding: 12px 16px;
+				border-radius: 3px;
+				border: none;
+				font-size: 14px;
+			}
+		</style>
+	</head>
+	<script src="node_modules/three/build/three.min.js"></script>
+	<script src="node_modules/webxr-polyfill/build/webxr-polyfill.min.js"></script>
+	<body>
+		<div id="container"></div>
+		<script src="demo.js"></script>
+	</body>
+</html>

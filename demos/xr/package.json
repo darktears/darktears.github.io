@@ -1,0 +1,15 @@
+{
+  "name": "xr",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.93.0",
+    "webxr-polyfill": "^1.0.6"
+  }
+}
