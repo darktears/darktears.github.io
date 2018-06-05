@@ -152,11 +152,12 @@ class Demo {
 
     // Box.
     const boxGeometry = new THREE.BoxGeometry(WIDTH, HEIGHT, DEPTH);
-    var webvr = new THREE.ImageUtils.loadTexture("webvr.jpg"); 
-    const boxMaterial = new THREE.MeshBasicMaterial({map:webvr, side:THREE.DoubleSide});
+    var webxr = new THREE.ImageUtils.loadTexture("webxr.jpg");
+    const boxMaterial = new THREE.MeshBasicMaterial({map:webxr, side:THREE.DoubleSide});
 
     this._box = new THREE.Mesh(boxGeometry, boxMaterial);
     this._box.position.z = -5;
+    this._box.position.y = 1;
 
     // Room.
     var roofTexture = new THREE.ImageUtils.loadTexture( 'ceiling.jpg' );
@@ -203,6 +204,7 @@ class Demo {
     const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
     const room = new THREE.Mesh(roomGeometry, multiMaterial);
     room.position.z = -2;
+    room.position.y = 1;
 
     this._scene.add(this._box);
     this._scene.add(room);
