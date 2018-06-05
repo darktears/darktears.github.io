@@ -53,13 +53,11 @@ class Demo {
     this._addEventListeners();
     requestAnimationFrame(this._update);
 
-    this._onResize = this._onResize.bind(this);
-
-    this._disabled = false;
     this._firstVRFrame = false;
     this._xrDevice;
     this._xrSession;
     this._xrFrameOfRef;
+    this._originalCanvas;
     this._checkForXR();
   }
 
@@ -93,16 +91,6 @@ class Demo {
       _checkMagicWindowSupport();
       console.log("VR not supported: " + err);
     });  
-  }
-
-  _addVREventListeners () {
-    window.addEventListener('vrdisplayactivate', _ => {
-      this._activateVR();
-    });
-
-    window.addEventListener('vrdisplaydeactivate', _ => {
-      this._deactivateVR();
-    });
   }
 
   _update (timestamp, xrFrame) {
@@ -220,14 +208,6 @@ class Demo {
     this._scene.add(room);
   }
 
-  _showNoPresentError () {
-    console.error(`Unable to present with this device ${this._vr.display}`);
-  }
-
-  _showWebVRNotSupportedError () {
-    console.error('WebVR not supported');
-  }
-
   _createPresentationButton () {
       this._button = document.createElement('button');
       this._button.classList.add('vr-toggle');
@@ -246,7 +226,7 @@ class Demo {
     return this._activateVR();
   }
 
-  _deactivateVR () {
+  async _deactivateVR () {
     if (!this._xrDevice) {
       return;
     }
@@ -255,8 +235,11 @@ class Demo {
       return;
     }
 
-    this._xrSession.end();
-    this._xrSession = undefined;
+    await this._xrSession.end();
+    this._xrSession = null;
+    this._xrFrameOfRef = null;
+    this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
+    requestAnimationFrame(this._update);
     return;
   }
 
@@ -273,13 +256,11 @@ class Demo {
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
       
       // Reference frame for VR: stage vs headModel.
-      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("headModel");
+      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("stage");
 
-      let gl = this._renderer.domElement.getContext('webgl');
-      await gl.setCompatibleXRDevice(this._xrDevice);
-  
       // Create the WebGL layer.
-      this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, gl);
+      this._renderer.vr.setDevice(this._xrDevice);
+      this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
       
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
@@ -290,9 +271,10 @@ class Demo {
   }
 
     _render (timestamp, xrFrame) {
-    if (this._disabled || !(this._xrSession)) {
+    if (!this._xrSession) {
       // Ensure that we switch everything back to auto for non-VR mode.
       this._onResize();
+      this._renderer.setViewport(0, 0, this._width, this._height);
       this._renderer.autoClear = true;
       this._scene.matrixAutoUpdate = true;
       this._renderer.render(this._scene, this._camera);
@@ -308,30 +290,23 @@ class Demo {
     // to render it ourselves twice, once for each eye.
     this._renderer.autoClear = false;
 
+    this._renderer.setSize(this._xrSession.baseLayer.framebufferWidth, this._xrSession.baseLayer.framebufferHeight, false);
+
     // Clear the canvas manually.
     this._renderer.clear();
 
     // Get pose data.
-    console.log(xrFrame);
     let pose = xrFrame.getDevicePose(this._xrFrameOfRef);
     let xrLayer = this._xrSession.baseLayer;
-  
-    const gl = this._renderer.domElement.getContext('webgl');
-    gl.bindFramebuffer(gl.FRAMEBUFFER, xrLayer.framebuffer);
+
+    this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, xrLayer.framebuffer);
 
     for (let view of xrFrame.views) {
       let viewport = xrLayer.getViewport(view);
       this._renderEye(
         pose.getViewMatrix(view),
         view.projectionMatrix,
-        {
-          x: viewport.x,
-          y: viewport.y,
-          w: viewport.width,
-          h: viewport.height
-      });
-      // Ensure that left eye calcs aren't going to interfere.
-      this._renderer.clearDepth();
+        viewport);
     }
 
     // Use the VR display's in-built rAF (which can be a diff refresh rate to
@@ -342,16 +317,18 @@ class Demo {
 
   _renderEye (viewMatrix, projectionMatrix, viewport) {
     // Set the left or right eye half.
-    console.log(viewport)
-    this._renderer.setViewport(viewport.x, viewport.y, viewport.w, viewport.h);
+    this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
     // Update the scene and camera matrices.
     this._camera.projectionMatrix.fromArray(projectionMatrix);
+    this._camera.matrixWorldInverse.fromArray(viewMatrix);
     this._scene.matrix.fromArray(viewMatrix);
 
     // Tell the scene to update (otherwise it will ignore the change of matrix).
     this._scene.updateMatrixWorld(true);
     this._renderer.render(this._scene, this._camera);
+    // Ensure that left eye calcs aren't going to interfere.
+    this._renderer.clearDepth();
   }
 }
 
