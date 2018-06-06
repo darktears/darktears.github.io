@@ -93,7 +93,7 @@ class Demo {
     this._xrDevice = device;
     this._xrDevice.supportsSession({ exclusive: true }).then(() => {
       this._createPresentationButton();
-      //this._checkMagicWindowSupport();
+      this._checkMagicWindowSupport();
     }).catch((err) => {
       console.log("VR not supported: " + err);
     });  
