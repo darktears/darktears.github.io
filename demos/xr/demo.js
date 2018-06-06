@@ -57,7 +57,7 @@ class Demo {
     this._xrDevice;
     this._xrSession;
     this._xrFrameOfRef;
-    this._originalCanvas;
+    this._magicWindowCanvas;
     this._checkForXR();
   }
 
@@ -76,10 +76,16 @@ class Demo {
   }
 
   _checkMagicWindowSupport() {
-    let magicWindowCtx = this._renderer.domElement.getContext('xrpresent');
+    this._magicWindowCanvas = document.createElement("canvas");
+    let magicWindowContext = this._magicWindowCanvas.getContext('xrpresent');
     // Check to see if the UA can support a non-exclusive sessions with the given output context.
-    return xrDevice.supportsSession({ outputContext: magicWindowCtx })
-        .then(() => { console.log("Magic Window content is supported!"); })
+    return this._xrDevice.supportsSession({ outputContext: magicWindowContext })
+        .then(() => {
+          this._activateMagicWindow(magicWindowContext);
+          this._magicWindowCanvas.width = this._width;
+          this._magicWindowCanvas.height = this._height;
+          this._container.appendChild(this._magicWindowCanvas);
+        })
         .catch((reason) => { console.log("Magic Window content is not supported: " + reason); });
   }
 
@@ -87,8 +93,8 @@ class Demo {
     this._xrDevice = device;
     this._xrDevice.supportsSession({ exclusive: true }).then(() => {
       this._createPresentationButton();
+      //this._checkMagicWindowSupport();
     }).catch((err) => {
-      _checkMagicWindowSupport();
       console.log("VR not supported: " + err);
     });  
   }
@@ -109,6 +115,11 @@ class Demo {
     this._aspect = this._width / this._height;
 
     this._renderer.setSize(this._width, this._height);
+
+    if (this._magicWindowCanvas) {
+      this._magicWindowCanvas.width = this._width;
+      this._magicWindowCanvas.height = this._height;
+    }
 
     if (!this._camera) {
       return;
@@ -220,15 +231,22 @@ class Demo {
       document.body.appendChild(this._button);
   }
 
-  _toggleVR () {
-    if (this._xrSession) {
+  async _toggleVR () {
+    if (!this._renderer.domElement.hidden && this._xrSession) {
       return this._deactivateVR();
+    }
+
+    if (this._renderer.domElement.hidden && this._xrSession) {
+      await this._xrSession.end();
+      this._xrSession = null;
+      this._xrFrameOfRef = null;
     }
 
     return this._activateVR();
   }
 
   async _deactivateVR () {
+    console.log("_deactivateVR")
     if (!this._xrDevice) {
       return;
     }
@@ -238,11 +256,45 @@ class Demo {
     }
 
     await this._xrSession.end();
+  }
+
+  async _onSessionEnded () {
     this._xrSession = null;
     this._xrFrameOfRef = null;
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
     requestAnimationFrame(this._update);
-    return;
+    if (this._magicWindowCanvas)
+      this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
+  }
+
+  async _activateMagicWindow (ctx) {
+    if (!this._xrDevice) {
+      return;
+    }
+
+    try {
+      // ‘Exclusive’ means rendering into the HMD.
+      this._xrSession = await this._xrDevice.requestSession({ outputContext: ctx });
+
+      this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
+      this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
+      
+      // Reference frame for VR: stage vs headModel.
+      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("eyeLevel");
+
+      // Create the WebGL layer.
+      this._renderer.vr.setDevice(this._xrDevice);
+      this._renderer.domElement.hidden = true;
+      if (this._magicWindowCanvas)
+        this._magicWindowCanvas.hidden = false;
+      this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+
+      // Enter the rendering loop.
+      this._xrSession.requestAnimationFrame(this._update);
+
+    } catch (error) {
+      console.log("Error : " + error);
+    };
   }
 
   async _activateVR () {
@@ -253,16 +305,21 @@ class Demo {
     try {
       // ‘Exclusive’ means rendering into the HMD.
       this._xrSession = await this._xrDevice.requestSession({ exclusive: true });
+      this._xrSession.addEventListener('end', this._onSessionEnded.bind(this));
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
-      
+
       // Reference frame for VR: stage vs headModel.
       this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("stage");
 
       // Create the WebGL layer.
       this._renderer.vr.setDevice(this._xrDevice);
+      this._renderer.domElement.hidden = false;
+      if (this._magicWindowCanvas)
+        this._magicWindowCanvas.hidden = true;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      this._renderer.setSize(this._xrSession.baseLayer.framebufferWidth, this._xrSession.baseLayer.framebufferHeight, false);
       
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
@@ -272,7 +329,7 @@ class Demo {
     };
   }
 
-    _render (timestamp, xrFrame) {
+  _render (timestamp, xrFrame) {
     if (!this._xrSession) {
       // Ensure that we switch everything back to auto for non-VR mode.
       this._onResize();
@@ -291,8 +348,6 @@ class Demo {
     // Make sure not to clear the renderer automatically, because we will need
     // to render it ourselves twice, once for each eye.
     this._renderer.autoClear = false;
-
-    this._renderer.setSize(this._xrSession.baseLayer.framebufferWidth, this._xrSession.baseLayer.framebufferHeight, false);
 
     // Clear the canvas manually.
     this._renderer.clear();
