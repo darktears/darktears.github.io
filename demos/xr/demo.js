@@ -246,7 +246,6 @@ class Demo {
   }
 
   async _deactivateVR () {
-    console.log("_deactivateVR")
     if (!this._xrDevice) {
       return;
     }
@@ -285,8 +284,7 @@ class Demo {
       // Create the WebGL layer.
       this._renderer.vr.setDevice(this._xrDevice);
       this._renderer.domElement.hidden = true;
-      if (this._magicWindowCanvas)
-        this._magicWindowCanvas.hidden = false;
+      this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
 
       // Enter the rendering loop.
@@ -319,7 +317,6 @@ class Demo {
       if (this._magicWindowCanvas)
         this._magicWindowCanvas.hidden = true;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
-      this._renderer.setSize(this._xrSession.baseLayer.framebufferWidth, this._xrSession.baseLayer.framebufferHeight, false);
       
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
@@ -355,6 +352,8 @@ class Demo {
     // Get pose data.
     let pose = xrFrame.getDevicePose(this._xrFrameOfRef);
     let xrLayer = this._xrSession.baseLayer;
+
+    this._renderer.setSize(xrLayer.framebufferWidth, xrLayer.framebufferHeight, false);
 
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, xrLayer.framebuffer);
 
