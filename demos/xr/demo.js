@@ -75,12 +75,12 @@ class Demo {
     navigator.xr.requestDevice().then(device => {
       this._onXRAvailable(device);
     }, err => {
-      if (err.name === 'NotFoundError') {
+      if (err.message === 'NotFoundError') {
         // No XRDevices available.
-        console.error('No XR devices available:', err);
+        console.error('No XR devices available :', err);
       } else {
         // An error occurred while requesting an XRDevice.
-        console.error('Requesting XR device failed:', err);
+        console.error('Requesting XR device failed :', err);
       }
     });
   }
@@ -327,7 +327,6 @@ class Demo {
     }
 
     try {
-      // ‘Exclusive’ means rendering into the HMD.
       this._xrSession = await this._xrDevice.requestSession({ outputContext: ctx });
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
@@ -346,7 +345,7 @@ class Demo {
       this._xrSession.requestAnimationFrame(this._update);
 
     } catch (error) {
-      console.log("Error : " + error);
+      console.log("Error while requesting magic window session : " + error);
     };
   }
 
@@ -377,7 +376,7 @@ class Demo {
       this._xrSession.requestAnimationFrame(this._update);
     
     } catch (error) {
-      console.log("Error : " + error);
+      console.log("Error while requesting the exclusive session : " + error);
     };
   }
 
