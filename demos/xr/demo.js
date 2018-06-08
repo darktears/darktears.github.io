@@ -102,6 +102,7 @@ class Demo {
   _onXRAvailable(device) {
     this._xrDevice = device;
     this._loadViveMeshes();
+    this._loadDaydreamMeshes();
     this._xrDevice.supportsSession({ exclusive: true }).then(() => {
       this._createPresentationButton();
       this._checkMagicWindowSupport();
@@ -300,8 +301,14 @@ class Demo {
     this._xrFrameOfRef = null;
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
     this._activeControllers = 0;
+    for (let controller of this._controllers) {
+      this._scene.remove(controller);
+    }
     this._controllers = [];
     this._activeLasers = 0;
+    for (let laser of this._lasers) {
+      this._scene.remove(laser);
+    }
     this._lasers = [];
     requestAnimationFrame(this._update);
     if (this._magicWindowCanvas)
@@ -345,7 +352,7 @@ class Demo {
     try {
       // ‘Exclusive’ means rendering into the HMD.
       this._xrSession = await this._xrDevice.requestSession({ exclusive: true });
-      this._xrSession.addEventListener('end', _ => { this._toggleVR(); });
+      this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
@@ -444,7 +451,11 @@ class Demo {
         if (this._activeControllers < this._controllers.length) {
           controller = this._controllers[this._activeControllers];
         } else {
-          controller = this._controllersMeshes['vive'].clone();
+          // FIXME: very stupid assumption
+          if (inputSources.length > 1)
+            controller = this._controllersMeshes['vive'].clone();
+          else
+            controller = this._controllersMeshes['daydream'].clone();
           this._controllers.push(controller);
           this._scene.add(controller);
         }
