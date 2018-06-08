@@ -258,6 +258,10 @@ class Demo {
     room.position.z = 2;
     room.position.y = 1;
 
+    let light = new THREE.PointLight('#ffffff', 1, 2, 0.5);
+    light.position.y = 2;
+    this._scene.add(light);
+
     this._scene.add(this._box);
     this._scene.add(room);
   }
