@@ -113,7 +113,6 @@ class Demo {
   _loadViveMeshes() {
     var mesh = null;
     var mtlLoader = new THREE.MTLLoader();
-    mtlLoader.setBaseUrl(Demo.VIVE_CONTROLLER_MODEL_URL);
     mtlLoader.setPath(Demo.VIVE_CONTROLLER_MODEL_URL);
     mtlLoader.load('vr_controller_vive.mtl', (materials) => {
       materials.preload();
@@ -129,7 +128,6 @@ class Demo {
   _loadDaydreamMeshes() {
     var mesh = null;
     var mtlLoader = new THREE.MTLLoader();
-    mtlLoader.setBaseUrl(Demo.DAYDREAM_CONTROLLER_MODEL_URL);
     mtlLoader.setPath(Demo.DAYDREAM_CONTROLLER_MODEL_URL);
     mtlLoader.load('vr_controller_daydream.mtl', (materials) => {
       materials.preload();
@@ -201,14 +199,10 @@ class Demo {
   }
 
   createMeshes () {
-    const WIDTH = 2;
-    const HEIGHT = 1;
-    const DEPTH = 1;
-
     // Box.
-    const boxGeometry = new THREE.BoxGeometry(WIDTH, HEIGHT, DEPTH);
-    var webxr = new THREE.ImageUtils.loadTexture("webxr.jpg");
-    var webxrGray = new THREE.ImageUtils.loadTexture("webxr-gray.jpg");
+    const boxGeometry = new THREE.BoxGeometry(2, 1, 1);
+    var webxr = new new THREE.TextureLoader().load('webxr.jpg');
+    var webxrGray = new new THREE.TextureLoader().load('webxr-gray.jpg');
 
     this._boxMaterial = new THREE.MeshBasicMaterial({map:webxr, side:THREE.DoubleSide});
     this._boxMaterialGray = new THREE.MeshBasicMaterial({map:webxrGray, side:THREE.DoubleSide});
@@ -218,15 +212,15 @@ class Demo {
     this._box.position.y = 1;
 
     // Room.
-    var roofTexture = new THREE.ImageUtils.loadTexture( 'ceiling.jpg' );
+    var roofTexture = new THREE.TextureLoader().load('ceiling.jpg');
     roofTexture.wrapS = roofTexture.wrapT = THREE.RepeatWrapping;
     roofTexture.repeat.set( 8, 8 );
 
-    var wallTexture = new THREE.ImageUtils.loadTexture( 'wall1.jpg' );
+    var wallTexture = new THREE.TextureLoader().load('wall1.jpg' );
     wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
     wallTexture.repeat.set( 3, 1 );
 
-    var floorTexture = new THREE.ImageUtils.loadTexture( 'floor.jpg' );
+    var floorTexture = new THREE.TextureLoader().load('floor.jpg');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set( 20, 20 );
 
@@ -256,11 +250,8 @@ class Demo {
            side: THREE.BackSide
        })
     ];
-
-    var multiMaterial = new THREE.MultiMaterial( materials );
-
     const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
-    const room = new THREE.Mesh(roomGeometry, multiMaterial);
+    const room = new THREE.Mesh(roomGeometry, materials);
     room.position.z = 2;
     room.position.y = 1;
 
