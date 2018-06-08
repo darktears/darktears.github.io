@@ -336,7 +336,7 @@ class Demo {
       this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("eyeLevel");
 
       // Create the WebGL layer.
-      this._renderer.vr.setDevice(this._xrDevice);
+      await this._renderer.vr.setDevice(this._xrDevice);
       this._renderer.domElement.hidden = true;
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
@@ -366,7 +366,7 @@ class Demo {
       this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("stage");
 
       // Create the WebGL layer.
-      this._renderer.vr.setDevice(this._xrDevice);
+      await this._renderer.vr.setDevice(this._xrDevice);
       this._renderer.domElement.hidden = false;
       if (this._magicWindowCanvas)
         this._magicWindowCanvas.hidden = true;
