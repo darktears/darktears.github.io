@@ -1,7 +1,7 @@
 {
-  "name": "xr",
+  "name": "WebXR Demo",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simple WebXR Demo",
   "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

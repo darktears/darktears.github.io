@@ -29,6 +29,9 @@ class Demo {
     };
   }
 
+  static get VIVE_CONTROLLER_MODEL_URL () { return 'https://cdn.aframe.io/controllers/vive/'; }
+  static get DAYDREAM_CONTROLLER_MODEL_URL () { return 'https://cdn.aframe.io/controllers/google/'; }
+
   constructor () {
     this._width;
     this._height;
@@ -37,6 +40,8 @@ class Demo {
     this._aspect;
     this._settings;
     this._box;
+    this._boxMaterial;
+    this._boxMaterialGray;
     this._container = document.querySelector('#container');
 
     this.clearContainer();
@@ -58,6 +63,11 @@ class Demo {
     this._xrSession;
     this._xrFrameOfRef;
     this._magicWindowCanvas;
+    this._activeControllers = 0;
+    this._controllers = [];
+    this._controllersMeshes = [];
+    this._activeLasers = 0;
+    this._lasers = [];
     this._checkForXR();
   }
 
@@ -91,12 +101,46 @@ class Demo {
 
   _onXRAvailable(device) {
     this._xrDevice = device;
+    this._loadViveMeshes();
     this._xrDevice.supportsSession({ exclusive: true }).then(() => {
       this._createPresentationButton();
       this._checkMagicWindowSupport();
     }).catch((err) => {
       console.log("VR not supported: " + err);
     });  
+  }
+
+  _loadViveMeshes() {
+    var mesh = null;
+    var mtlLoader = new THREE.MTLLoader();
+    mtlLoader.setBaseUrl(Demo.VIVE_CONTROLLER_MODEL_URL);
+    mtlLoader.setPath(Demo.VIVE_CONTROLLER_MODEL_URL);
+    mtlLoader.load('vr_controller_vive.mtl', (materials) => {
+      materials.preload();
+      let objLoader = new THREE.OBJLoader();
+      objLoader.setMaterials( materials );
+      objLoader.setPath(Demo.VIVE_CONTROLLER_MODEL_URL);
+      objLoader.load('vr_controller_vive.obj', (object) => {
+      this._controllersMeshes['vive'] = object;
+      });
+    });
+  }
+
+  _loadDaydreamMeshes() {
+    var mesh = null;
+    var mtlLoader = new THREE.MTLLoader();
+    mtlLoader.setBaseUrl(Demo.DAYDREAM_CONTROLLER_MODEL_URL);
+    mtlLoader.setPath(Demo.DAYDREAM_CONTROLLER_MODEL_URL);
+    mtlLoader.load('vr_controller_daydream.mtl', (materials) => {
+      materials.preload();
+
+      var objLoader = new THREE.OBJLoader();
+      objLoader.setMaterials( materials );
+      objLoader.setPath(Demo.DAYDREAM_CONTROLLER_MODEL_URL);
+      objLoader.load('vr_controller_daydream.obj', (object) => {
+      this._controllersMeshes['daydream'] = object;
+      });
+    });
   }
 
   _update (timestamp, xrFrame) {
@@ -164,10 +208,13 @@ class Demo {
     // Box.
     const boxGeometry = new THREE.BoxGeometry(WIDTH, HEIGHT, DEPTH);
     var webxr = new THREE.ImageUtils.loadTexture("webxr.jpg");
-    const boxMaterial = new THREE.MeshBasicMaterial({map:webxr, side:THREE.DoubleSide});
+    var webxrGray = new THREE.ImageUtils.loadTexture("webxr-gray.jpg");
 
-    this._box = new THREE.Mesh(boxGeometry, boxMaterial);
-    this._box.position.z = -5;
+    this._boxMaterial = new THREE.MeshBasicMaterial({map:webxr, side:THREE.DoubleSide});
+    this._boxMaterialGray = new THREE.MeshBasicMaterial({map:webxrGray, side:THREE.DoubleSide});
+
+    this._box = new THREE.Mesh(boxGeometry, this._boxMaterial);
+    this._box.position.z = 5;
     this._box.position.y = 1;
 
     // Room.
@@ -214,7 +261,7 @@ class Demo {
 
     const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
     const room = new THREE.Mesh(roomGeometry, multiMaterial);
-    room.position.z = -2;
+    room.position.z = 2;
     room.position.y = 1;
 
     this._scene.add(this._box);
@@ -261,6 +308,10 @@ class Demo {
     this._xrSession = null;
     this._xrFrameOfRef = null;
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
+    this._activeControllers = 0;
+    this._controllers = [];
+    this._activeLasers = 0;
+    this._lasers = [];
     requestAnimationFrame(this._update);
     if (this._magicWindowCanvas)
       this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
@@ -303,7 +354,7 @@ class Demo {
     try {
       // ‘Exclusive’ means rendering into the HMD.
       this._xrSession = await this._xrDevice.requestSession({ exclusive: true });
-      this._xrSession.addEventListener('end', this._onSessionEnded.bind(this));
+      this._xrSession.addEventListener('end', _ => { this._toggleVR(); });
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
@@ -357,6 +408,8 @@ class Demo {
 
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, xrLayer.framebuffer);
 
+    this._updateInput(xrFrame);
+
     for (let view of xrFrame.views) {
       let viewport = xrLayer.getViewport(view);
       this._renderEye(
@@ -368,7 +421,6 @@ class Demo {
     // Use the VR display's in-built rAF (which can be a diff refresh rate to
     // the default browser one).
     this._xrSession.requestAnimationFrame(this._update);
-
   }
 
   _renderEye (viewMatrix, projectionMatrix, viewport) {
@@ -385,6 +437,88 @@ class Demo {
     this._renderer.render(this._scene, this._camera);
     // Ensure that left eye calcs aren't going to interfere.
     this._renderer.clearDepth();
+  }
+
+  _updateInput(xrFrame) {
+    let inputSources = this._xrSession.getInputSources();
+    let intersected = false;
+    for (let inputSource of inputSources) {
+      let inputPose = xrFrame.getInputPose(inputSource, this._xrFrameOfRef);
+
+      if (!inputPose)
+        continue;
+
+      if (inputPose.gripMatrix) {
+        let controller = null;
+        if (this._activeControllers < this._controllers.length) {
+          controller = this._controllers[this._activeControllers];
+        } else {
+          controller = this._controllersMeshes['vive'].clone();
+          this._controllers.push(controller);
+          this._scene.add(controller);
+        }
+        this._activeControllers = this._activeControllers + 1;
+        controller.visible = true;
+        controller.matrixAutoUpdate = false;
+        controller.matrix.fromArray(inputPose.gripMatrix);
+        controller.updateMatrixWorld(true);
+      }
+      if (inputPose.pointerMatrix) {
+        if (inputSource.pointerOrigin == 'hand') {
+          let laser = null;
+          if (this._activeLasers < this._lasers.length) {
+            laser = this._lasers[this._activeLasers];
+          } else {
+            var material = new THREE.LineBasicMaterial({
+              color: this._getRandomColor()
+            });
+
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(
+              new THREE.Vector3( 0, 0, 0 ),
+              new THREE.Vector3( 0, 0, -5 ),
+            );
+
+            laser = new THREE.Line( geometry, material );
+            this._lasers.push(laser);
+            this._scene.add(laser);
+          }
+          this._activeLasers = this._activeLasers + 1;
+          laser.visible = true;
+          laser.matrixAutoUpdate = false;
+          laser.matrix.fromArray(inputPose.pointerMatrix);
+          laser.updateMatrixWorld(true);
+
+          let destination = new THREE.Vector3(0, 0, -1);
+          let rot = new THREE.Quaternion();
+          laser.getWorldQuaternion(rot);
+          destination.applyQuaternion(rot);
+
+          let raycaster = new THREE.Raycaster();
+          raycaster.set(laser.position, destination);
+          let intersects = raycaster.intersectObject(this._box, true);
+          if (intersects.length > 0) {
+            intersected = true;
+          }
+        }
+      }
+    }
+    this._activeControllers = 0;
+    this._activeLasers = 0;
+    if (intersected) {
+      this._box.material = this._boxMaterialGray;
+    } else {
+      this._box.material = this._boxMaterial;
+    }
+  }
+
+  _getRandomColor() {
+    let letters = '0123456789ABCDEF';
+    let color = '#';
+    for (var i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
   }
 }
 
