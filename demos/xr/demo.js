@@ -68,6 +68,8 @@ class Demo {
     this._controllersMeshes = [];
     this._activeLasers = 0;
     this._lasers = [];
+    this._cursors = [];
+    this._activeCursors = 0;
     this._checkForXR();
   }
 
@@ -112,7 +114,6 @@ class Demo {
   }
 
   _loadViveMeshes() {
-    let mesh = null;
     let mtlLoader = new THREE.MTLLoader();
     mtlLoader.crossOrigin = '';
     mtlLoader.setPath(Demo.VIVE_CONTROLLER_MODEL_URL);
@@ -128,7 +129,6 @@ class Demo {
   }
 
   _loadDaydreamMeshes() {
-    let mesh = null;
     let mtlLoader = new THREE.MTLLoader();
     mtlLoader.crossOrigin = '';
     mtlLoader.setPath(Demo.DAYDREAM_CONTROLLER_MODEL_URL);
@@ -316,6 +316,11 @@ class Demo {
       this._scene.remove(laser);
     }
     this._lasers = [];
+    this._activeCursors = 0;
+    for (let cursor of this._cursors) {
+      this._scene.remove(cursor);
+    }
+    this._cursors = [];
     requestAnimationFrame(this._update);
     if (this._magicWindowCanvas)
       this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
@@ -471,6 +476,8 @@ class Demo {
         controller.updateMatrixWorld(true);
       }
       if (inputPose.pointerMatrix) {
+        let raycasterOrigin = new THREE.Vector3();
+        let raycasterDestination = null;
         if (inputSource.pointerOrigin == 'hand') {
           let laser = null;
           if (this._activeLasers < this._lasers.length) {
@@ -495,23 +502,39 @@ class Demo {
           laser.matrixAutoUpdate = false;
           laser.matrix.fromArray(inputPose.pointerMatrix);
           laser.updateMatrixWorld(true);
-
-          let destination = new THREE.Vector3(0, 0, -1);
+          raycasterOrigin = laser.position;
+          raycasterDestination = new THREE.Vector3(0, 0, -1);
           let rot = new THREE.Quaternion();
           laser.getWorldQuaternion(rot);
-          destination.applyQuaternion(rot);
+          raycasterDestination.applyQuaternion(rot);
+        }
+        let cursor = null;
+        if (this._activeCursors < this._cursors.length) {
+          cursor = this._cursors[this._activeCursors];
+        } else {
+          let geometry = new THREE.CircleGeometry(0.05, 30);
+          let material = new THREE.MeshBasicMaterial({ color: this._getRandomColor() , transparent: true, opacity : 0.5 });
+          cursor = new THREE.Mesh(geometry, material);
+          this._cursors.push(cursor);
+          this._scene.add(cursor);
+        }
+        this._activeCursors = this._activeCursors + 1;
+        cursor.matrixAutoUpdate = false;
+        cursor.matrix.fromArray(inputPose.pointerMatrix);
+        cursor.matrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -3.5));
+        cursor.updateMatrixWorld(true);
 
-          let raycaster = new THREE.Raycaster();
-          raycaster.set(laser.position, destination);
-          let intersects = raycaster.intersectObject(this._box, true);
-          if (intersects.length > 0) {
-            intersected = true;
-          }
+        let raycaster = new THREE.Raycaster();
+        raycaster.set(raycasterOrigin, raycasterDestination);
+        let intersects = raycaster.intersectObject(this._box, true);
+        if (intersects.length > 0) {
+          intersected = true;
         }
       }
     }
     this._activeControllers = 0;
     this._activeLasers = 0;
+    this._activeCursors = 0;
     if (intersected) {
       this._box.material = this._boxMaterialGray;
     } else {
