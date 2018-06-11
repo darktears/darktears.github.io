@@ -477,7 +477,7 @@ class Demo {
       }
       if (inputPose.pointerMatrix) {
         let raycasterOrigin = new THREE.Vector3();
-        let raycasterDestination = null;
+        let raycasterDestination = new THREE.Vector3(0, 0, -1);
         if (inputSource.pointerOrigin == 'hand') {
           let laser = null;
           if (this._activeLasers < this._lasers.length) {
@@ -489,8 +489,8 @@ class Demo {
 
             var geometry = new THREE.Geometry();
             geometry.vertices.push(
-              new THREE.Vector3( 0, 0, 0 ),
-              new THREE.Vector3( 0, 0, -5 ),
+              new THREE.Vector3(0, 0, 0),
+              new THREE.Vector3(0, 0, -3.5),
             );
 
             laser = new THREE.Line( geometry, material );
@@ -502,18 +502,14 @@ class Demo {
           laser.matrixAutoUpdate = false;
           laser.matrix.fromArray(inputPose.pointerMatrix);
           laser.updateMatrixWorld(true);
-          raycasterOrigin = laser.position;
-          raycasterDestination = new THREE.Vector3(0, 0, -1);
-          let rot = new THREE.Quaternion();
-          laser.getWorldQuaternion(rot);
-          raycasterDestination.applyQuaternion(rot);
         }
         let cursor = null;
         if (this._activeCursors < this._cursors.length) {
           cursor = this._cursors[this._activeCursors];
         } else {
           let geometry = new THREE.CircleGeometry(0.05, 30);
-          let material = new THREE.MeshBasicMaterial({ color: this._getRandomColor() , transparent: true, opacity : 0.5 });
+          let material = new THREE.MeshBasicMaterial(
+            {color: this._getRandomColor(), transparent: true, opacity : 0.5});
           cursor = new THREE.Mesh(geometry, material);
           this._cursors.push(cursor);
           this._scene.add(cursor);
@@ -521,6 +517,13 @@ class Demo {
         this._activeCursors = this._activeCursors + 1;
         cursor.matrixAutoUpdate = false;
         cursor.matrix.fromArray(inputPose.pointerMatrix);
+        cursor.updateMatrixWorld(true);
+        let rotation = new THREE.Quaternion();
+        cursor.getWorldQuaternion(rotation);
+        raycasterDestination.applyQuaternion(rotation);
+        raycasterOrigin = cursor.position;
+
+
         cursor.matrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -3.5));
         cursor.updateMatrixWorld(true);
 
