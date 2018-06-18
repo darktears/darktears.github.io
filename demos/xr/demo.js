@@ -195,6 +195,7 @@ class Demo {
         this._settings.near,
         this._settings.far
     );
+    this._camera.lookAt(new THREE.Vector3(0, 0, 1));
   }
 
   createScene () {
