@@ -20,14 +20,29 @@
 				border: none;
 				font-size: 14px;
 			}
+			#start {
+				position: absolute;
+				top: 0px;
+				height: 100%;
+				width: 100%;
+				z-index: 100;
+				color: #FFF;
+				font-size: 50px;
+				background-color: rgba(0, 0, 0, 0.5);
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
 		</style>
 		<script src="node_modules/three/build/three.min.js"></script>
 		<script src="node_modules/three/examples/js/loaders/MTLLoader.js"></script>
 		<script src="node_modules/three/examples/js/loaders/OBJLoader.js"></script>
+		<script src="node_modules/three/examples/js/controls/PointerLockControls.js"></script>
 		<script src="node_modules/webxr-polyfill/build/webxr-polyfill.min.js"></script>
 	</head>
 	<body>
 		<div id="container"></div>
+		<div id="start">Click to get started</div>
 		<script src="demo.js"></script>
 	</body>
 </html>
