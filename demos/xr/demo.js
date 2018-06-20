@@ -158,12 +158,20 @@ class Demo {
     }
   }
 
+  _hideStartMessage() {
+    this._startMessage.style.display = 'none';
+  }
+
+  _showStartMessage() {
+    this._startMessage.style.display = 'flex';
+  }
+
   _pointerLockChanged() {
     if (document.pointerLockElement === document.body || document.mozPointerLockElement === document.body || document.webkitPointerLockElement === document.body) {
       this._controls.enabled = true;
-      this._startMessage.style.display = 'none';
+      this._hideStartMessage();
     } else {
-      this._startMessage.style.display = 'flex';
+      this._showStartMessage();
       this._controls.enabled = false;
     }
   }
@@ -184,6 +192,7 @@ class Demo {
 
   _onXRAvailable(device) {
     this._xrDevice = device;
+    this._hideStartMessage();
     this._loadViveMeshes();
     this._loadDaydreamMeshes();
     this._xrDevice.supportsSession({ exclusive: true }).then(() => {
