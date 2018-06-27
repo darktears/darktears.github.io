@@ -200,7 +200,7 @@ class Demo {
       this._checkMagicWindowSupport();
     }).catch((err) => {
       console.log("VR not supported: " + err);
-    });  
+    });
   }
 
   _loadViveMeshes() {
@@ -455,7 +455,7 @@ class Demo {
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
-      
+
       // Reference frame for VR: stage vs headModel.
       this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("eyeLevel");
 
@@ -495,10 +495,10 @@ class Demo {
       if (this._magicWindowCanvas)
         this._magicWindowCanvas.hidden = true;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
-      
+
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
-    
+
     } catch (error) {
       console.log("Error while requesting the exclusive session : " + error);
     };
@@ -681,7 +681,7 @@ class Demo {
             let quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
             cursor.quaternion.copy(quaternion);
           } else {
-            cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z); 
+            cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z);
           }
           break;
         }
