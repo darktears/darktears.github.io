@@ -294,66 +294,95 @@ class Demo {
   createMeshes () {
     // Box.
     const boxGeometry = new THREE.BoxGeometry(2, 1, 1);
-    var webxr = new new THREE.TextureLoader().load('webxr.jpg');
-    var webxrGray = new new THREE.TextureLoader().load('webxr-gray.jpg');
+    let webxr = new new THREE.TextureLoader().load('webxr.jpg');
+    let webxrGray = new new THREE.TextureLoader().load('webxr-gray.jpg');
 
     this._boxMaterial = new THREE.MeshBasicMaterial({map:webxr, side:THREE.DoubleSide});
     this._boxMaterialGray = new THREE.MeshBasicMaterial({map:webxrGray, side:THREE.DoubleSide});
 
     this._box = new THREE.Mesh(boxGeometry, this._boxMaterial);
+    this._box.name = "box";
     this._box.position.z = 5;
     this._box.position.y = 1;
+    this._scene.add(this._box);
 
     // Room.
-    var roofTexture = new THREE.TextureLoader().load('ceiling.jpg');
+    let roofTexture = new THREE.TextureLoader().load('ceiling.jpg');
     roofTexture.wrapS = roofTexture.wrapT = THREE.RepeatWrapping;
-    roofTexture.repeat.set( 8, 8 );
+    roofTexture.repeat.set(8, 8);
 
-    var wallTexture = new THREE.TextureLoader().load('wall1.jpg' );
+    let wallTexture = new THREE.TextureLoader().load('wall1.jpg' );
     wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-    wallTexture.repeat.set( 3, 1 );
+    wallTexture.repeat.set(3, 1);
 
-    var floorTexture = new THREE.TextureLoader().load('floor.jpg');
+    let floorTexture = new THREE.TextureLoader().load('floor.jpg');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set( 20, 20 );
+    floorTexture.repeat.set(20, 20);
 
-    var materials = [
-       new THREE.MeshBasicMaterial({
-           map: wallTexture,
-           side: THREE.BackSide
-       }),
-       new THREE.MeshBasicMaterial({
-           map: wallTexture,
-           side: THREE.BackSide
-       }),
-       new THREE.MeshBasicMaterial({
-           map: roofTexture,
-           side: THREE.BackSide
-       }),
-       new THREE.MeshBasicMaterial({
-           map: floorTexture,
-           side: THREE.BackSide
-       }),
-       new THREE.MeshBasicMaterial({
-           map: wallTexture,
-           side: THREE.BackSide
-       }),
-       new THREE.MeshBasicMaterial({
-           map: wallTexture,
-           side: THREE.BackSide
-       })
+    let wallMaterial = [
+      new THREE.MeshBasicMaterial({
+          map: wallTexture,
+          side: THREE.DoubleSide
+      })
     ];
-    const roomGeometry = new THREE.BoxGeometry(10, 3, 10, 10, 3, 10);
-    const room = new THREE.Mesh(roomGeometry, materials);
-    room.position.z = 2;
-    room.position.y = 1;
+
+    let roofMaterial = [
+      new THREE.MeshBasicMaterial({
+          map: roofTexture,
+          side: THREE.DoubleSide
+      })
+    ];
+
+    let floorMaterial = [
+      new THREE.MeshBasicMaterial({
+          map: floorTexture,
+          side: THREE.BackSide
+      })
+    ];
+
+    //Build the walls.
+    const roomGeometry = new THREE.PlaneGeometry(10, 3);
+    let wall = new THREE.Mesh(roomGeometry, wallMaterial);
+    wall.position.z = 7;
+    wall.position.y = 1;
+    this._scene.add(wall);
+
+    wall = new THREE.Mesh(roomGeometry, wallMaterial);
+    wall.position.z = 2;
+    wall.position.y = 1;
+    wall.position.x = 5;
+    wall.rotation.y = -Math.PI / 2;
+    this._scene.add(wall);
+
+    wall = new THREE.Mesh(roomGeometry, wallMaterial);
+    wall.position.z = -3;
+    wall.position.y = 1;
+    this._scene.add(wall);
+
+    wall = new THREE.Mesh(roomGeometry, wallMaterial);
+    wall.position.z = 2;
+    wall.position.x = -5;
+    wall.position.y = 1;
+    wall.rotation.y = -Math.PI / 2;
+    this._scene.add(wall);
+
+    const squareGeometry = new THREE.PlaneGeometry(10, 10);
+    let floor = new THREE.Mesh(squareGeometry, floorMaterial);
+    floor.position.z = 2;
+    floor.position.y = -0.5;
+    floor.rotation.x = Math.PI / 2;
+    this._scene.add(floor);
+
+    let roof = new THREE.Mesh(squareGeometry, roofMaterial);
+    roof.position.z = 2;
+    roof.position.y = 2.5;
+    roof.rotation.x = Math.PI / 2;
+    this._scene.add(roof);
 
     let light = new THREE.PointLight('#ffffff', 1, 2, 0.5);
     light.position.y = 2;
+    light.name = "light";
     this._scene.add(light);
-
-    this._scene.add(this._box);
-    this._scene.add(room);
   }
 
   _createPresentationButton () {
@@ -535,6 +564,9 @@ class Demo {
 
     // Get pose data.
     let pose = xrFrame.getDevicePose(this._xrFrameOfRef);
+    if (!pose)
+      return;
+
     let xrLayer = this._xrSession.baseLayer;
 
     this._renderer.setSize(xrLayer.framebufferWidth, xrLayer.framebufferHeight, false);
@@ -600,25 +632,77 @@ class Demo {
         controller.matrix.fromArray(inputPose.gripMatrix);
         controller.updateMatrixWorld(true);
       }
+
       if (inputPose.pointerMatrix) {
+        let color = this._getRandomColor();
         let raycasterOrigin = new THREE.Vector3();
         let raycasterDestination = new THREE.Vector3(0, 0, -1);
+        let cursor = null;
+
+        if (this._activeCursors < this._cursors.length) {
+          cursor = this._cursors[this._activeCursors];
+        } else {
+          let geometry = new THREE.CircleGeometry(0.05, 30);
+          let material = new THREE.MeshBasicMaterial(
+            {color: color, transparent: true, opacity : 0.5, side: THREE.DoubleSide});
+          cursor = new THREE.Mesh(geometry, material);
+          cursor.name = 'cursor';
+          this._cursors.push(cursor);
+          this._scene.add(cursor);
+        }
+        this._activeCursors = this._activeCursors + 1;
+
+        let pointerMatrix = new THREE.Matrix4();
+        let pointerWorldMatrix = new THREE.Matrix4();
+        let laserLength = 0;
+
+        pointerMatrix.fromArray(inputPose.pointerMatrix);
+        pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
+        raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
+
+        let raycaster = new THREE.Raycaster();
+        raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
+        let intersects = raycaster.intersectObjects(this._scene.children, true);
+
+        for (let intersect of intersects) {
+          if (intersect.object.name === 'laser' || intersect.object.name === 'cursor')
+            continue;
+
+          laserLength = -intersect.distance + 0.1;
+          pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, laserLength));
+          let position = new THREE.Vector3();
+          pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+          cursor.position.copy(position);
+          if (intersect.object.name === 'box') {
+            intersected = true;
+            let normalMatrix = new THREE.Matrix3().getNormalMatrix(intersect.object.matrixWorld);
+            let faceDirection = intersect.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+            let matrix = new THREE.Matrix4().lookAt(faceDirection,new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1));
+            let quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+            cursor.quaternion.copy(quaternion);
+          } else {
+            cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z); 
+          }
+          break;
+        }
+
         if (inputSource.pointerOrigin == 'hand') {
           let laser = null;
           if (this._activeLasers < this._lasers.length) {
             laser = this._lasers[this._activeLasers];
+            laser.geometry.vertices[1].copy(new THREE.Vector3(0, 0, laserLength));
+            laser.geometry.verticesNeedUpdate = true;
           } else {
             var material = new THREE.LineBasicMaterial({
-              color: this._getRandomColor()
+              color: color
             });
-
-            var geometry = new THREE.Geometry();
+            let geometry = new THREE.Geometry();
             geometry.vertices.push(
               new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(0, 0, -3.5),
+              new THREE.Vector3(0, 0, laserLength),
             );
-
             laser = new THREE.Line( geometry, material );
+            laser.name = 'laser';
             this._lasers.push(laser);
             this._scene.add(laser);
           }
@@ -628,41 +712,13 @@ class Demo {
           laser.matrix.fromArray(inputPose.pointerMatrix);
           laser.updateMatrixWorld(true);
         }
-        let cursor = null;
-        if (this._activeCursors < this._cursors.length) {
-          cursor = this._cursors[this._activeCursors];
-        } else {
-          let geometry = new THREE.CircleGeometry(0.05, 30);
-          let material = new THREE.MeshBasicMaterial(
-            {color: this._getRandomColor(), transparent: true, opacity : 0.5});
-          cursor = new THREE.Mesh(geometry, material);
-          this._cursors.push(cursor);
-          this._scene.add(cursor);
-        }
-        this._activeCursors = this._activeCursors + 1;
-        cursor.matrixAutoUpdate = false;
-        cursor.matrix.fromArray(inputPose.pointerMatrix);
-        cursor.updateMatrixWorld(true);
-        let rotation = new THREE.Quaternion();
-        cursor.getWorldQuaternion(rotation);
-        raycasterDestination.applyQuaternion(rotation);
-        raycasterOrigin = cursor.position;
-
-
-        cursor.matrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -3.5));
-        cursor.updateMatrixWorld(true);
-
-        let raycaster = new THREE.Raycaster();
-        raycaster.set(raycasterOrigin, raycasterDestination);
-        let intersects = raycaster.intersectObject(this._box, true);
-        if (intersects.length > 0) {
-          intersected = true;
-        }
       }
     }
+
     this._activeControllers = 0;
     this._activeLasers = 0;
     this._activeCursors = 0;
+
     if (intersected) {
       this._box.material = this._boxMaterialGray;
     } else {
