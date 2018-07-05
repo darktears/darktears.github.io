@@ -397,7 +397,7 @@ class Demo {
   _createPresentationButton () {
       this._button = document.createElement('button');
       this._button.classList.add('vr-toggle');
-      this._button.textContent = 'Enter VR';
+      this._button.textContent = 'Switch to XR';
       this._button.addEventListener('click', _ => {
         this._toggleVR();
       });
