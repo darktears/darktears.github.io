@@ -626,25 +626,8 @@ class Demo {
       if (!inputPose)
         continue;
 
-      if (inputPose.gripMatrix) {
-        let controller = null;
-        if (this._activeControllers < this._controllers.length) {
-          controller = this._controllers[this._activeControllers];
-        } else {
-          // FIXME: very stupid assumption
-          if (this._isMobile())
-            controller = this._controllersMeshes['daydream'].clone();
-          else
-            controller = this._controllersMeshes['vive'].clone();
-          this._controllers.push(controller);
-          this._scene.add(controller);
-        }
-        this._activeControllers = this._activeControllers + 1;
-        controller.visible = true;
-        controller.matrixAutoUpdate = false;
-        controller.matrix.fromArray(inputPose.gripMatrix);
-        controller.updateMatrixWorld(true);
-      }
+      if (inputPose.gripMatrix)
+        this._drawController(inputPose.gripMatrix);
 
       if (inputPose.pointerMatrix) {
         let color = this._getRandomColor();
@@ -699,32 +682,8 @@ class Demo {
           break;
         }
 
-        if (inputSource.pointerOrigin == 'hand') {
-          let laser = null;
-          if (this._activeLasers < this._lasers.length) {
-            laser = this._lasers[this._activeLasers];
-            laser.geometry.vertices[1].copy(new THREE.Vector3(0, 0, laserLength));
-            laser.geometry.verticesNeedUpdate = true;
-          } else {
-            var material = new THREE.LineBasicMaterial({
-              color: color
-            });
-            let geometry = new THREE.Geometry();
-            geometry.vertices.push(
-              new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(0, 0, laserLength),
-            );
-            laser = new THREE.Line( geometry, material );
-            laser.name = 'laser';
-            this._lasers.push(laser);
-            this._scene.add(laser);
-          }
-          this._activeLasers = this._activeLasers + 1;
-          laser.visible = true;
-          laser.matrixAutoUpdate = false;
-          laser.matrix.fromArray(inputPose.pointerMatrix);
-          laser.updateMatrixWorld(true);
-        }
+        if (inputSource.pointerOrigin == 'hand')
+          this._drawLaser(color, laserLength, inputPose.pointerMatrix);
       }
     }
 
@@ -737,6 +696,53 @@ class Demo {
     } else {
       this._box.material = this._boxMaterial;
     }
+  }
+
+  _drawController(gripMatrix) {
+    let controller = null;
+    if (this._activeControllers < this._controllers.length) {
+      controller = this._controllers[this._activeControllers];
+    } else {
+      // FIXME: very stupid assumption
+      if (this._isMobile())
+        controller = this._controllersMeshes['daydream'].clone();
+      else
+        controller = this._controllersMeshes['vive'].clone();
+      this._controllers.push(controller);
+      this._scene.add(controller);
+    }
+    this._activeControllers = this._activeControllers + 1;
+    controller.visible = true;
+    controller.matrixAutoUpdate = false;
+    controller.matrix.fromArray(gripMatrix);
+    controller.updateMatrixWorld(true);
+  }
+
+  _drawLaser(color, length, pointerMatrix) {
+    let laser = null;
+    if (this._activeLasers < this._lasers.length) {
+      laser = this._lasers[this._activeLasers];
+      laser.geometry.vertices[1].copy(new THREE.Vector3(0, 0, length));
+      laser.geometry.verticesNeedUpdate = true;
+    } else {
+      var material = new THREE.LineBasicMaterial({
+        color: color
+      });
+      let geometry = new THREE.Geometry();
+      geometry.vertices.push(
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, length),
+      );
+      laser = new THREE.Line( geometry, material );
+      laser.name = 'laser';
+      this._lasers.push(laser);
+      this._scene.add(laser);
+    }
+    this._activeLasers = this._activeLasers + 1;
+    laser.visible = true;
+    laser.matrixAutoUpdate = false;
+    laser.matrix.fromArray(pointerMatrix);
+    laser.updateMatrixWorld(true);
   }
 
   _getRandomColor() {
