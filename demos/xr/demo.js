@@ -44,6 +44,7 @@ class Demo {
     this._boxMaterialGray;
     this._container = document.querySelector('#container');
     this._startMessage = document.querySelector('#start');
+    this._touchControls = document.querySelector('#touchControls');
 
     this.clearContainer();
     this.createRenderer();
@@ -164,6 +165,14 @@ class Demo {
 
   _showStartMessage() {
     this._startMessage.style.display = 'flex';
+  }
+
+  _hideTouchControls() {
+    this._touchControls.style.display = 'none';
+  }
+
+  _showTouchControls() {
+    this._touchControls.style.display = 'inline';
   }
 
   _pointerLockChanged() {
@@ -465,6 +474,8 @@ class Demo {
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
 
+      this._showTouchControls();
+
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
 
@@ -492,8 +503,10 @@ class Demo {
       // Create the WebGL layer.
       await this._renderer.vr.setDevice(this._xrDevice);
       this._renderer.domElement.hidden = false;
-      if (this._magicWindowCanvas)
+      if (this._magicWindowCanvas) {
         this._magicWindowCanvas.hidden = true;
+        this._hideTouchControls();
+      }
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
 
       // Enter the rendering loop.

@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>WebXR Demo</title>
-		<meta name="viewport" content="width=device-width">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
 		<style>
 			html, body {
 				padding: 0;
@@ -33,6 +33,76 @@
 				justify-content: center;
 				align-items: center;
 			}
+			#touchControls {
+				display: none;
+				position: absolute;
+				bottom: 20px;
+				right: 20px;
+				width: 150px;
+				height: 150px;
+				background: white;
+				border-radius: 75px;
+			}
+			#up {
+				position: absolute;
+				top: 0px;
+				left: 55px;
+				width: 0;
+				height: 0;
+				border-left: 20px solid transparent;
+				border-right: 20px solid transparent;
+				border-bottom: 50px solid black;
+			}
+			#down {
+				position: absolute;
+				bottom: 0px;
+				left: 55px;
+				width: 0;
+				height: 0;
+				border-left: 20px solid transparent;
+				border-right: 20px solid transparent;
+				border-top: 50px solid black;
+			}
+			#right {
+				position: absolute;
+				bottom: 55px;
+				right: 0px;
+				width: 0;
+				height: 0;
+				border-top: 20px solid transparent;
+				border-left: 50px solid black;
+				border-bottom: 20px solid transparent;
+			}
+			#left {
+				position: absolute;
+				bottom: 55px;
+				left: 0px;
+				width: 0;
+				height: 0;
+				border-top: 20px solid transparent;
+				border-right: 50px solid black;
+				border-bottom: 20px solid transparent;
+			}
+			#line1 {
+				width: 150px;
+				height: 150px;
+				border-bottom: 1px dashed black;
+				transform:
+            translateY(-52px)
+            translateX(54px)
+            rotate(45deg);
+				position: absolute;
+			}
+			#line2{
+				width: 150px;
+				height: 150px;
+				border-bottom: 1px dashed black;
+				transform:
+            translateY(-52px)
+            translateX(-54px)
+            rotate(-45deg);
+				position: absolute;
+			}
 		</style>
 		<script src="node_modules/three/build/three.min.js"></script>
 		<script src="node_modules/three/examples/js/loaders/MTLLoader.js"></script>
@@ -42,6 +112,14 @@
 	</head>
 	<body>
 		<div id="container"></div>
+		<div id="touchControls">
+			<div id="line1"></div>
+			<div id="left"></div>
+			<div id="up"></div>
+			<div id="right"></div>
+			<div id="down"></div>
+			<div id="line2"></div>
+		</div>
 		<div id="start">Click to get started</div>
 		<script src="demo.js"></script>
 	</body>
