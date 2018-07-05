@@ -474,7 +474,7 @@ class Demo {
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
 
-      this._showTouchControls();
+      //this._showTouchControls();
 
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
