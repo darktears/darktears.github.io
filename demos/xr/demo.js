@@ -74,6 +74,7 @@ class Demo {
     this._activeCursors = 0;
     this._prevTime = performance.now();
     this._velocity = new THREE.Vector3();
+    this._magicWindowPos = new THREE.Vector3();
     this._moveForward = false;
     this._moveBackward = false;
     this._moveRight = false;
@@ -473,8 +474,41 @@ class Demo {
       this._renderer.domElement.hidden = true;
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      this._magicWindowPos.set(0, 0 ,0);
 
-      //this._showTouchControls();
+      this._showTouchControls();
+      if (window.PointerEvent) {
+        const left = document.querySelector('#left');
+        left.addEventListener('pointerdown', ev => {
+          this._moveLeft = true;
+        });
+        left.addEventListener('pointerup', ev => {
+          this._moveLeft = false;
+        });
+        const up = document.querySelector('#up');
+        up.addEventListener('pointerdown', ev => {
+          this._moveForward = true;
+        });
+        up.addEventListener('pointerup', ev => {
+          this._moveForward = false;
+        });
+        const down = document.querySelector('#down');
+        down.addEventListener('pointerdown', ev => {
+          this._moveBackward = true;
+        });
+        down.addEventListener('pointerup', ev => {
+          this._moveBackward = false;
+        });
+        const right = document.querySelector('#right');
+        right.addEventListener('pointerdown', ev => {
+          this._moveRight = true;
+        });
+        right.addEventListener('pointerup', ev => {
+          this._moveRight = false;
+        });
+      } else {
+        // FIXME: touch events for iOS.
+      }
 
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
@@ -533,7 +567,6 @@ class Demo {
     if (this._moveRight) this._velocity.x -= 100.0 * delta;
 
     controls_yaw.translateX(this._velocity.x * delta);
-		controls_yaw.translateY(this._velocity.y * delta);
     controls_yaw.translateZ(this._velocity.z * delta);
 
     if (controls_yaw.position.z > 6)
@@ -601,20 +634,72 @@ class Demo {
     this._xrSession.requestAnimationFrame(this._update);
   }
 
-  _renderEye (viewMatrix, projectionMatrix, viewport) {
+  _renderEye (viewMatrixArray, projectionMatrix, viewport) {
     // Set the left or right eye half.
     this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
+    let viewMatrix = new THREE.Matrix4();
+    viewMatrix.fromArray(viewMatrixArray);
+
+    if (this._magicWindowCanvas && this._magicWindowCanvas.hidden === false) {
+      viewMatrix = this._calculateMagicWindowPosition(viewMatrix);
+    }
     // Update the scene and camera matrices.
     this._camera.projectionMatrix.fromArray(projectionMatrix);
-    this._camera.matrixWorldInverse.fromArray(viewMatrix);
-    this._scene.matrix.fromArray(viewMatrix);
+    this._camera.matrixWorldInverse.copy(viewMatrix);
+    this._scene.matrix.copy(viewMatrix);
 
     // Tell the scene to update (otherwise it will ignore the change of matrix).
     this._scene.updateMatrixWorld(true);
     this._renderer.render(this._scene, this._camera);
     // Ensure that left eye calcs aren't going to interfere.
     this._renderer.clearDepth();
+  }
+
+  _calculateMagicWindowPosition(viewMatrix) {
+    let rotation = new THREE.Quaternion();
+    viewMatrix.decompose(new THREE.Vector3(), rotation, new THREE.Vector3());
+    let time = performance.now();
+    let delta = (time - this._prevTime) / 1000;
+
+    // Decrease the velocity.
+    this._velocity.x -= this._velocity.x * 10.0 * delta;
+    this._velocity.z -= this._velocity.z * 10.0 * delta;
+
+    var rotationInEuler = new THREE.Euler();
+    rotationInEuler.setFromQuaternion(rotation);
+    // From the phone sensor we only need the y rotation to know
+    // where to move.
+    rotationInEuler.x = 0;
+    rotationInEuler.z = 0;
+
+    if (this._moveForward) this._velocity.z += 100.0 * delta;
+    if (this._moveBackward) this._velocity.z -= 100.0 * delta;
+    if (this._moveLeft) this._velocity.x += 100.0 * delta;
+    if (this._moveRight) this._velocity.x -= 100.0 * delta;
+
+    let directionX = new THREE.Vector3(-1, 0, 0);
+    directionX.applyEuler(rotationInEuler);
+    this._magicWindowPos.add(directionX.multiplyScalar(this._velocity.x * delta));
+    let directionZ = new THREE.Vector3(0, 0, -1);
+    directionZ.applyEuler(rotationInEuler);
+    this._magicWindowPos.add(directionZ.multiplyScalar(this._velocity.z * delta));
+
+    // Check bounds.
+    if (this._magicWindowPos.z > 2)
+      this._magicWindowPos.z = 2;
+    if (this._magicWindowPos.z < -6)
+      this._magicWindowPos.z = -6;
+    if (this._magicWindowPos.x > 4)
+      this._magicWindowPos.x = 4;
+    if (this._magicWindowPos.x < -4)
+      this._magicWindowPos.x = -4;
+
+    let dPadTranslation = new THREE.Matrix4();
+    dPadTranslation.setPosition(this._magicWindowPos);
+    viewMatrix.multiply(dPadTranslation);
+    this._prevTime = time;
+    return viewMatrix;
   }
 
   _updateInput(xrFrame) {
