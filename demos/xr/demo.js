@@ -746,7 +746,7 @@ class Demo {
         let intersects = raycaster.intersectObjects(this._scene.children, true);
 
         for (let intersect of intersects) {
-          if (intersect.object.name === 'laser' || intersect.object.name === 'cursor')
+          if (intersect.object.name === 'laser' || intersect.object.name === 'cursor' || intersect.object.name === 'body')
             continue;
 
           laserLength = -intersect.distance + 0.1;
