@@ -714,7 +714,7 @@ class Demo {
       if (inputPose.gripMatrix)
         this._drawController(inputPose.gripMatrix);
 
-      if (inputPose.pointerMatrix) {
+      if (inputPose.targetRay) {
         let color = this._getRandomColor();
         let raycasterOrigin = new THREE.Vector3();
         let raycasterDestination = new THREE.Vector3(0, 0, -1);
@@ -736,8 +736,7 @@ class Demo {
         let pointerMatrix = new THREE.Matrix4();
         let pointerWorldMatrix = new THREE.Matrix4();
         let laserLength = 0;
-
-        pointerMatrix.fromArray(inputPose.pointerMatrix);
+        pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
         pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
         raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
 
@@ -767,8 +766,8 @@ class Demo {
           break;
         }
 
-        if (inputSource.pointerOrigin == 'hand')
-          this._drawLaser(color, laserLength, inputPose.pointerMatrix);
+        if (inputSource.targetRayMode == 'tracked-pointer')
+          this._drawLaser(color, laserLength, inputPose.targetRay.transformMatrix);
       }
     }
 
