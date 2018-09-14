@@ -189,7 +189,7 @@ class Demo {
   _checkMagicWindowSupport() {
     this._magicWindowCanvas = document.createElement("canvas");
     let magicWindowContext = this._magicWindowCanvas.getContext('xrpresent');
-    // Check to see if the UA can support a non-exclusive sessions with the given output context.
+    // Check to see if the UA can support a non-immersive sessions with the given output context.
     return this._xrDevice.supportsSession({ outputContext: magicWindowContext })
         .then(() => {
           this._activateMagicWindow(magicWindowContext);
@@ -205,7 +205,7 @@ class Demo {
     this._hideStartMessage();
     this._loadViveMeshes();
     this._loadDaydreamMeshes();
-    this._xrDevice.supportsSession({ exclusive: true }).then(() => {
+    this._xrDevice.supportsSession({ immersive: true }).then(() => {
       this._createPresentationButton();
       this._checkMagicWindowSupport();
     }).catch((err) => {
@@ -524,8 +524,8 @@ class Demo {
     }
 
     try {
-      // ‘Exclusive’ means rendering into the HMD.
-      this._xrSession = await this._xrDevice.requestSession({ exclusive: true });
+      // ‘Immersive’ means rendering into the HMD.
+      this._xrSession = await this._xrDevice.requestSession({ immersive: true });
       this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
@@ -547,7 +547,7 @@ class Demo {
       this._xrSession.requestAnimationFrame(this._update);
 
     } catch (error) {
-      console.log("Error while requesting the exclusive session : " + error);
+      console.log("Error while requesting the immersive session : " + error);
     };
   }
 
