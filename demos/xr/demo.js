@@ -467,7 +467,7 @@ class Demo {
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
 
       // Reference frame for VR: stage vs headModel.
-      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("eyeLevel");
+      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("eye-level");
 
       // Create the WebGL layer.
       await this._renderer.vr.setDevice(this._xrDevice);
