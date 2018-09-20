@@ -51,8 +51,6 @@ class Demo {
     this._addEventListeners();
     requestAnimationFrame(this._update);
 
-    this._onResize = this._onResize.bind(this);
-
     this._disabled = false;
     if (typeof VRFrameData === 'undefined') {
       this._disabled = true;
@@ -288,8 +286,8 @@ class Demo {
       return this._vr.display.requestAnimationFrame(this._update);
     }
 
-    const EYE_WIDTH = this._width * 0.5;
-    const EYE_HEIGHT = this._height;
+    const EYE_WIDTH = this._renderer.domElement.width * 0.5;
+    const EYE_HEIGHT = this._renderer.domElement.height;
 
     // Get all the latest data from the VR headset and dump it into frameData.
     this._vr.display.getFrameData(this._vr.frameData);
@@ -344,9 +342,7 @@ class Demo {
 
     // Update the scene and camera matrices.
     this._camera.projectionMatrix.fromArray(projectionMatrix);
-    console.log(projectionMatrix.toString());
     this._scene.matrix.fromArray(viewMatrix);
-    console.log(viewMatrix.toString());
 
     // Tell the scene to update (otherwise it will ignore the change of matrix).
     this._scene.updateMatrixWorld(true);
