@@ -666,24 +666,23 @@ class Demo {
     this._velocity.x -= this._velocity.x * 10.0 * delta;
     this._velocity.z -= this._velocity.z * 10.0 * delta;
 
-    var rotationInEuler = new THREE.Euler();
-    rotationInEuler.setFromQuaternion(rotation);
-    // From the phone sensor we only need the y rotation to know
-    // where to move.
-    rotationInEuler.x = 0;
-    rotationInEuler.z = 0;
+    let invertedRotation = rotation.inverse();
+    // Extract the yaw rotation only.
+    let norm = Math.sqrt(invertedRotation.w * invertedRotation.w + invertedRotation.y * invertedRotation.y);
+    let invertedYawRotation = new THREE.Quaternion(0, invertedRotation.y / norm, 0, invertedRotation.w / norm);
 
-    if (this._moveForward) this._velocity.z += 100.0 * delta;
-    if (this._moveBackward) this._velocity.z -= 100.0 * delta;
-    if (this._moveLeft) this._velocity.x += 100.0 * delta;
-    if (this._moveRight) this._velocity.x -= 100.0 * delta;
+    let delta_z = 0;
+    let delta_x = 0;
+    if (this._moveForward) delta_z = 100.0 * delta * delta;
+    if (this._moveBackward) delta_z = -100.0 * delta * delta;
+    if (this._moveLeft) delta_x = 100.0 * delta * delta;
+    if (this._moveRight) delta_x = -100.0 * delta * delta;
 
-    let directionX = new THREE.Vector3(-1, 0, 0);
-    directionX.applyEuler(rotationInEuler);
-    this._magicWindowPos.add(directionX.multiplyScalar(this._velocity.x * delta));
-    let directionZ = new THREE.Vector3(0, 0, -1);
-    directionZ.applyEuler(rotationInEuler);
-    this._magicWindowPos.add(directionZ.multiplyScalar(this._velocity.z * delta));
+    // Move back to view coordinates.
+    let deltaPosition = new THREE.Vector3(delta_x, 0, delta_z);
+    deltaPosition.applyQuaternion(invertedYawRotation);
+
+    this._magicWindowPos.add(deltaPosition);
 
     // Check bounds.
     if (this._magicWindowPos.z > 2)
@@ -695,9 +694,12 @@ class Demo {
     if (this._magicWindowPos.x < -4)
       this._magicWindowPos.x = -4;
 
-    let dPadTranslation = new THREE.Matrix4();
-    dPadTranslation.setPosition(this._magicWindowPos);
-    viewMatrix.multiply(dPadTranslation);
+    let translationInView = new THREE.Vector3();
+    translationInView.copy(this._magicWindowPos);
+    translationInView.applyMatrix4(viewMatrix);
+    let translationInViewMatrix = new THREE.Matrix4();
+    translationInViewMatrix.makeTranslation(translationInView.x, translationInView.y, translationInView.z);
+    viewMatrix.premultiply(translationInViewMatrix);
     this._prevTime = time;
     return viewMatrix;
   }
