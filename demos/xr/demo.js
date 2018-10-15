@@ -74,7 +74,7 @@ class Demo {
     this._activeCursors = 0;
     this._prevTime = performance.now();
     this._velocity = new THREE.Vector3();
-    this._magicWindowPos = new THREE.Vector3();
+    this._userPosition = new THREE.Vector3();
     this._moveForward = false;
     this._moveBackward = false;
     this._moveRight = false;
@@ -377,11 +377,12 @@ class Demo {
     this._scene.add(wall);
 
     const squareGeometry = new THREE.PlaneGeometry(10, 10);
-    let floor = new THREE.Mesh(squareGeometry, floorMaterial);
-    floor.position.z = 2;
-    floor.position.y = -0.5;
-    floor.rotation.x = Math.PI / 2;
-    this._scene.add(floor);
+    this._floor = new THREE.Mesh(squareGeometry, floorMaterial);
+    this._floor.position.z = 2;
+    this._floor.position.y = -0.5;
+    this._floor.rotation.x = Math.PI / 2;
+    this._floor.name = "floor";
+    this._scene.add(this._floor);
 
     let roof = new THREE.Mesh(squareGeometry, roofMaterial);
     roof.position.z = 2;
@@ -389,7 +390,7 @@ class Demo {
     roof.rotation.x = Math.PI / 2;
     this._scene.add(roof);
 
-    let light = new THREE.PointLight('#ffffff', 1, 2, 0.5);
+    let light = new THREE.PointLight('#ffffff', 1, 0, 0.5 );
     light.position.y = 2;
     light.name = "light";
     this._scene.add(light);
@@ -474,7 +475,7 @@ class Demo {
       this._renderer.domElement.hidden = true;
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
-      this._magicWindowPos.set(0, 0 ,0);
+      this._userPosition.set(0, 0 ,0);
 
       this._showTouchControls();
       if (window.PointerEvent) {
@@ -533,6 +534,9 @@ class Demo {
 
       // Reference frame for VR: stage vs headModel.
       this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("stage");
+      this._xrSession.addEventListener('select', (ev) => {
+          this._handleSelect(ev.inputSource, ev.frame, this._xrFrameOfRef);
+      });
 
       // Create the WebGL layer.
       await this._renderer.vr.setDevice(this._xrDevice);
@@ -597,6 +601,7 @@ class Demo {
     }
     if (!xrFrame)
       return;
+
     // Disable autoupdating because these values will be coming from the
     // frameData data directly.
     this._scene.matrixAutoUpdate = false;
@@ -642,7 +647,13 @@ class Demo {
     viewMatrix.fromArray(viewMatrixArray);
 
     if (this._magicWindowCanvas && this._magicWindowCanvas.hidden === false) {
-      viewMatrix = this._calculateMagicWindowPosition(viewMatrix);
+      this._calculateMagicWindowPosition(viewMatrix);
+      this._translateViewMatrix(viewMatrix, this._userPosition);
+    } else {
+      // We need to adjust the view matrix if the user was teleported.
+      let invertedTeleportTranslation = new THREE.Vector3();
+      invertedTeleportTranslation.copy(this._userPosition).negate();
+      this._translateViewMatrix(viewMatrix, invertedTeleportTranslation);
     }
     // Update the scene and camera matrices.
     this._camera.projectionMatrix.fromArray(projectionMatrix);
@@ -682,26 +693,66 @@ class Demo {
     let deltaPosition = new THREE.Vector3(delta_x, 0, delta_z);
     deltaPosition.applyQuaternion(invertedYawRotation);
 
-    this._magicWindowPos.add(deltaPosition);
+    this._userPosition.add(deltaPosition);
 
     // Check bounds.
-    if (this._magicWindowPos.z > 2)
-      this._magicWindowPos.z = 2;
-    if (this._magicWindowPos.z < -6)
-      this._magicWindowPos.z = -6;
-    if (this._magicWindowPos.x > 4)
-      this._magicWindowPos.x = 4;
-    if (this._magicWindowPos.x < -4)
-      this._magicWindowPos.x = -4;
+    if (this._userPosition.z > 2)
+      this._userPosition.z = 2;
+    if (this._userPosition.z < -6)
+      this._userPosition.z = -6;
+    if (this._userPosition.x > 4)
+      this._userPosition.x = 4;
+    if (this._userPosition.x < -4)
+      this._userPosition.x = -4;
 
+    this._prevTime = time;
+  }
+
+  _translateViewMatrix(viewMatrix, translationVector) {
     let translationInView = new THREE.Vector3();
-    translationInView.copy(this._magicWindowPos);
-    translationInView.applyMatrix4(viewMatrix);
+    translationInView.copy(translationVector);
+    let viewMatrixWithoutTranslation = new THREE.Matrix4();
+    viewMatrixWithoutTranslation.copy(viewMatrix);
+    viewMatrixWithoutTranslation.setPosition( new THREE.Vector3());
+    translationInView.applyMatrix4(viewMatrixWithoutTranslation);
     let translationInViewMatrix = new THREE.Matrix4();
     translationInViewMatrix.makeTranslation(translationInView.x, translationInView.y, translationInView.z);
     viewMatrix.premultiply(translationInViewMatrix);
-    this._prevTime = time;
-    return viewMatrix;
+  }
+
+  _handleSelect(inputSource, frame, frameOfRef) {
+    let inputPose = frame.getInputPose(inputSource, frameOfRef);
+
+    if (!inputPose) {
+      return;
+    }
+
+    let raycasterOrigin = new THREE.Vector3();
+    let raycasterDestination = new THREE.Vector3(0, 0, -1);
+    let pointerMatrix = new THREE.Matrix4();
+    let pointerWorldMatrix = new THREE.Matrix4();
+    pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+    let currentPosition = new THREE.Vector3(
+      this._userPosition.x,
+      this._userPosition.y,
+      this._userPosition.z);
+    let pointerPosition = new THREE.Vector3();
+    pointerMatrix.decompose(pointerPosition, new THREE.Quaternion(), new THREE.Vector3());
+    currentPosition.add(pointerPosition);
+    pointerMatrix.setPosition(currentPosition);
+    pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
+    raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
+    let raycaster = new THREE.Raycaster();
+    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
+    let intersects = raycaster.intersectObject(this._floor);
+    for (let intersect of intersects) {
+      let position = new THREE.Vector3();
+      pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -intersect.distance + 0.1));
+      pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+      position.y = 0;
+      this._userPosition.copy(position);
+      break;
+    }
   }
 
   _updateInput(xrFrame) {
@@ -739,6 +790,14 @@ class Demo {
         let pointerWorldMatrix = new THREE.Matrix4();
         let laserLength = 0;
         pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+        let currentPosition = new THREE.Vector3(
+          this._userPosition.x,
+          this._userPosition.y,
+          this._userPosition.z);
+        let pointerPosition = new THREE.Vector3();
+        pointerMatrix.decompose(pointerPosition, new THREE.Quaternion(), new THREE.Vector3());
+        currentPosition.add(pointerPosition);
+        pointerMatrix.setPosition(currentPosition);
         pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
         raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
 
@@ -751,25 +810,29 @@ class Demo {
             continue;
 
           laserLength = -intersect.distance + 0.1;
-          pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, laserLength));
-          let position = new THREE.Vector3();
-          pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
-          cursor.position.copy(position);
-          if (intersect.object.name === 'box') {
-            intersected = true;
-            let normalMatrix = new THREE.Matrix3().getNormalMatrix(intersect.object.matrixWorld);
-            let faceDirection = intersect.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-            let matrix = new THREE.Matrix4().lookAt(faceDirection,new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1));
-            let quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
-            cursor.quaternion.copy(quaternion);
+          let laser = this._getActiveLaser(color);
+          if (intersect.object.name == 'floor') {
+            if (inputSource.targetRayMode == 'tracked-pointer')
+              this._drawTeleporter(laser, laserLength, pointerMatrix, cursor);
           } else {
-            cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z);
+            if (intersect.object.name === 'box') {
+              intersected = true;
+              let normalMatrix = new THREE.Matrix3().getNormalMatrix(intersect.object.matrixWorld);
+              let faceDirection = intersect.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+              let matrix = new THREE.Matrix4().lookAt(faceDirection,new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1));
+              let quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+              cursor.quaternion.copy(quaternion);
+            }
+            if (inputSource.targetRayMode == 'tracked-pointer')
+              this._drawStraightLaser(laser, laserLength, pointerMatrix, cursor);
+            pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, laserLength));
+            let position = new THREE.Vector3();
+            pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+            cursor.position.copy(position);
           }
+          cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z);
           break;
         }
-
-        if (inputSource.targetRayMode == 'tracked-pointer')
-          this._drawLaser(color, laserLength, inputPose.targetRay.transformMatrix);
       }
     }
 
@@ -782,6 +845,23 @@ class Demo {
     } else {
       this._box.material = this._boxMaterial;
     }
+  }
+
+  _getActiveLaser(color) {
+    let laser = null;
+    if (this._activeLasers < this._lasers.length) {
+      laser = this._lasers[this._activeLasers];
+    } else {
+      var material = new THREE.MeshBasicMaterial({color: color});
+      let geometry = new THREE.BufferGeometry();
+      laser = new THREE.Line(geometry, material);
+      laser.name = 'laser';
+      laser.frustumCulled = false;
+      this._lasers.push(laser);
+      this._scene.add(laser);
+    }
+    this._activeLasers = this._activeLasers + 1;
+    return laser;
   }
 
   _drawController(gripMatrix) {
@@ -800,35 +880,89 @@ class Demo {
     this._activeControllers = this._activeControllers + 1;
     controller.visible = true;
     controller.matrixAutoUpdate = false;
-    controller.matrix.fromArray(gripMatrix);
+    let grip = new THREE.Matrix4();
+    grip.fromArray(gripMatrix);
+    let currentPosition = new THREE.Vector3(
+      this._userPosition.x,
+      this._userPosition.y,
+      this._userPosition.z);
+    let gripPosition = new THREE.Vector3();
+    grip.decompose(gripPosition, new THREE.Quaternion(), new THREE.Vector3());
+    currentPosition.add(gripPosition);
+    grip.setPosition(currentPosition);
+    controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
   }
 
-  _drawLaser(color, length, pointerMatrix) {
-    let laser = null;
-    if (this._activeLasers < this._lasers.length) {
-      laser = this._lasers[this._activeLasers];
-      laser.geometry.vertices[1].copy(new THREE.Vector3(0, 0, length));
-      laser.geometry.verticesNeedUpdate = true;
-    } else {
-      var material = new THREE.LineBasicMaterial({
-        color: color
-      });
-      let geometry = new THREE.Geometry();
-      geometry.vertices.push(
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, length),
-      );
-      laser = new THREE.Line( geometry, material );
-      laser.name = 'laser';
-      this._lasers.push(laser);
-      this._scene.add(laser);
-    }
-    this._activeLasers = this._activeLasers + 1;
+  _drawStraightLaser(laser, length, pointerMatrix, cursor) {
+    if (!laser)
+      return;
+    // It's a simple straight laser, we need 2 points (each of them have 3 coordinates).
+    let vertices = new Float32Array(2 * 3);
+    // Z coordinate for the second point.
+    vertices[5] = length;
+    laser.geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    laser.geometry.attributes.position.array = vertices
+    laser.geometry.verticesNeedUpdate = true;
     laser.visible = true;
     laser.matrixAutoUpdate = false;
-    laser.matrix.fromArray(pointerMatrix);
+    laser.matrix.copy(pointerMatrix);
     laser.updateMatrixWorld(true);
+
+    let geometry = new THREE.CircleGeometry(0.05, 30);
+    cursor.geometry.dispose();
+    cursor.geometry = geometry;
+  }
+
+  _drawTeleporter(laser, length, pointerMatrix, cursor) {
+    if (!laser)
+      return;
+
+    const drawCurve = false;
+    if (drawCurve) {
+      // 50 points to draw a curve is visually appealing.
+      const numberOfPoints = 50;
+      // Each points have 3 coordinates (x, y, z).
+      let vertices = new Float32Array(numberOfPoints * 3);
+      let x = 0;
+      let y = 0;
+      let z = 0;
+      let index = 0;
+      const gravity = 9.8;
+      // We're shooting up and in -z (front), x is not affected.
+      let direction = new THREE.Vector3(0, 1, -1);
+      direction.multiplyScalar(5);
+      for ( var i = 0, l = numberOfPoints; i < l; i ++ ) {
+        vertices[index++] = x;
+        vertices[index++] = y;
+        vertices[index++] = z;
+        let t = i / numberOfPoints;
+        // We use the following formula to calculate the motion
+        // of a projectile : x = Vx * t + 1/2 * g * t *t
+        y = direction.y * t + 0.5 * -gravity * t * t;
+        z = direction.z * t;
+      }
+
+      laser.geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      laser.geometry.attributes.position.array = vertices;
+      laser.geometry.verticesNeedUpdate = true;
+      this._activeLasers = this._activeLasers + 1;
+      laser.visible = true;
+      laser.matrixAutoUpdate = false;
+      laser.matrix.copy(pointerMatrix);
+      laser.updateMatrixWorld(true);
+    } else {
+      this._drawStraightLaser(laser, length, pointerMatrix, cursor);
+    }
+
+    let position = new THREE.Vector3();
+    pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, length));
+    pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+    let geometry = new THREE.TorusGeometry(0.3, 0.02, 30, 32, 6.29);
+    cursor.geometry.dispose();
+    cursor.geometry = geometry;
+    cursor.geometry.verticesNeedUpdate = true;
+    cursor.position.copy(position);
   }
 
   _getRandomColor() {
