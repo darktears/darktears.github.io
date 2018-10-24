@@ -482,31 +482,39 @@ class Demo {
         const left = document.querySelector('#left');
         left.addEventListener('pointerdown', ev => {
           this._moveLeft = true;
-        });
-        left.addEventListener('pointerup', ev => {
+          left.style.borderRightColor = "#e00d26";
+        }));
+        ['pointerup', 'pointerout'].forEach(ev => left.addEventListener(ev, _ => {
           this._moveLeft = false;
-        });
+          left.style.borderRightColor = "black";
+        }));
         const up = document.querySelector('#up');
         up.addEventListener('pointerdown', ev => {
           this._moveForward = true;
+          up.style.borderBottomColor = "#e00d26";
         });
-        up.addEventListener('pointerup', ev => {
+        ['pointerup', 'pointerout'].forEach(ev => up.addEventListener(ev, _ => {
           this._moveForward = false;
-        });
+          up.style.borderBottomColor = "black";
+        }));
         const down = document.querySelector('#down');
         down.addEventListener('pointerdown', ev => {
           this._moveBackward = true;
+          down.style.borderTopColor = "#e00d26";
         });
-        down.addEventListener('pointerup', ev => {
+        ['pointerup', 'pointerout'].forEach(ev => down.addEventListener(ev, _ => {
           this._moveBackward = false;
-        });
+          down.style.borderTopColor = "black";
+        }));
         const right = document.querySelector('#right');
         right.addEventListener('pointerdown', ev => {
           this._moveRight = true;
+          right.style.borderLeftColor = "#e00d26";
         });
-        right.addEventListener('pointerup', ev => {
+        ['pointerup', 'pointerout'].forEach(ev => right.addEventListener(ev, _ => {
           this._moveRight = false;
-        });
+          right.style.borderLeftColor = "black";
+        }));
       } else {
         // FIXME: touch events for iOS.
       }
@@ -713,7 +721,7 @@ class Demo {
     translationInView.copy(translationVector);
     let viewMatrixWithoutTranslation = new THREE.Matrix4();
     viewMatrixWithoutTranslation.copy(viewMatrix);
-    viewMatrixWithoutTranslation.setPosition( new THREE.Vector3());
+    viewMatrixWithoutTranslation.setPosition(new THREE.Vector3());
     translationInView.applyMatrix4(viewMatrixWithoutTranslation);
     let translationInViewMatrix = new THREE.Matrix4();
     translationInViewMatrix.makeTranslation(translationInView.x, translationInView.y, translationInView.z);
