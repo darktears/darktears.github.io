@@ -478,42 +478,44 @@ class Demo {
       this._userPosition.set(0, 0 ,0);
 
       this._showTouchControls();
+      const selectedColor = "#e00d26";
+      const baseColor = "black";
       if (window.PointerEvent) {
         const left = document.querySelector('#left');
         left.addEventListener('pointerdown', ev => {
           this._moveLeft = true;
-          left.style.borderRightColor = "#e00d26";
+          left.style.borderRightColor = selectedColor;
         });
         ['pointerup', 'pointerout'].forEach(ev => left.addEventListener(ev, _ => {
           this._moveLeft = false;
-          left.style.borderRightColor = "black";
+          left.style.borderRightColor = baseColor;
         }));
         const up = document.querySelector('#up');
         up.addEventListener('pointerdown', ev => {
           this._moveForward = true;
-          up.style.borderBottomColor = "#e00d26";
+          up.style.borderBottomColor = selectedColor;
         });
         ['pointerup', 'pointerout'].forEach(ev => up.addEventListener(ev, _ => {
           this._moveForward = false;
-          up.style.borderBottomColor = "black";
+          up.style.borderBottomColor = baseColor;
         }));
         const down = document.querySelector('#down');
         down.addEventListener('pointerdown', ev => {
           this._moveBackward = true;
-          down.style.borderTopColor = "#e00d26";
+          down.style.borderTopColor = selectedColor;
         });
         ['pointerup', 'pointerout'].forEach(ev => down.addEventListener(ev, _ => {
           this._moveBackward = false;
-          down.style.borderTopColor = "black";
+          down.style.borderTopColor = baseColor;
         }));
         const right = document.querySelector('#right');
         right.addEventListener('pointerdown', ev => {
           this._moveRight = true;
-          right.style.borderLeftColor = "#e00d26";
+          right.style.borderLeftColor = selectedColor;
         });
         ['pointerup', 'pointerout'].forEach(ev => right.addEventListener(ev, _ => {
           this._moveRight = false;
-          right.style.borderLeftColor = "black";
+          right.style.borderLeftColor = baseColor;
         }));
       } else {
         // FIXME: touch events for iOS.
