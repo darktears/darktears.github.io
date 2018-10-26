@@ -483,7 +483,7 @@ class Demo {
         left.addEventListener('pointerdown', ev => {
           this._moveLeft = true;
           left.style.borderRightColor = "#e00d26";
-        }));
+        });
         ['pointerup', 'pointerout'].forEach(ev => left.addEventListener(ev, _ => {
           this._moveLeft = false;
           left.style.borderRightColor = "black";
