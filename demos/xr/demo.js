@@ -29,7 +29,7 @@ const Direction = {
 
 class Demo {
 
-  static get CAMERA_SETTINGS () {
+  static get CAMERA_SETTINGS() {
     return {
       viewAngle: 45,
       near: 0.1,
@@ -37,10 +37,10 @@ class Demo {
     };
   }
 
-  static get VIVE_CONTROLLER_MODEL_URL () { return 'https://cdn.aframe.io/controllers/vive/'; }
-  static get DAYDREAM_CONTROLLER_MODEL_URL () { return 'https://cdn.aframe.io/controllers/google/'; }
+  static get VIVE_CONTROLLER_MODEL_URL() { return 'https://cdn.aframe.io/controllers/vive/'; }
+  static get DAYDREAM_CONTROLLER_MODEL_URL() { return 'https://cdn.aframe.io/controllers/google/'; }
 
-  constructor () {
+  constructor() {
     this._width;
     this._height;
     this._renderer;
@@ -87,7 +87,7 @@ class Demo {
     this._checkForXR();
   }
 
-  _checkForXR () {
+  _checkForXR() {
     navigator.xr.requestDevice().then(device => {
       this._onXRAvailable(device);
     }, err => {
@@ -250,7 +250,7 @@ class Demo {
     });
   }
 
-  _update (timestamp, xrFrame) {
+  _update(timestamp, xrFrame) {
     const ROTATION_VALUE = 4;
     const time = window.performance.now() * 0.0001;
 
@@ -280,20 +280,20 @@ class Demo {
     this._camera.updateProjectionMatrix();
   }
 
-  _addEventListeners () {
+  _addEventListeners() {
     window.addEventListener('resize', this._onResize);
   }
 
-  clearContainer () {
+  clearContainer() {
     this._container.innerHTML = '';
   }
 
-  createRenderer () {
+  createRenderer() {
     this._renderer = new THREE.WebGLRenderer({ antialias : true });
     this._container.appendChild(this._renderer.domElement);
   }
 
-  createCamera () {
+  createCamera() {
     this._settings = Demo.CAMERA_SETTINGS;
     this._camera = new THREE.PerspectiveCamera(
         this._settings.viewAngle,
@@ -303,11 +303,11 @@ class Demo {
     );
   }
 
-  createScene () {
+  createScene() {
     this._scene = new THREE.Scene();
   }
 
-  createMeshes () {
+  createMeshes() {
     // Box.
     const boxGeometry = new THREE.BoxGeometry(2, 1, 1);
     let webxr = new new THREE.TextureLoader().load('webxr.jpg');
@@ -402,7 +402,7 @@ class Demo {
     this._scene.add(light);
   }
 
-  _createPresentationButton () {
+  _createPresentationButton() {
       this._button = document.createElement('button');
       this._button.classList.add('vr-toggle');
       this._button.textContent = 'Switch to XR';
@@ -412,7 +412,7 @@ class Demo {
       document.body.appendChild(this._button);
   }
 
-  async _toggleVR () {
+  async _toggleVR() {
     if (!this._renderer.domElement.hidden && this._xrSession) {
       return this._deactivateVR();
     }
@@ -426,7 +426,7 @@ class Demo {
     return this._activateVR();
   }
 
-  async _deactivateVR () {
+  async _deactivateVR() {
     if (!this._xrDevice) {
       return;
     }
@@ -438,7 +438,7 @@ class Demo {
     await this._xrSession.end();
   }
 
-  async _onSessionEnded () {
+  async _onSessionEnded() {
     this._xrSession = null;
     this._xrFrameOfRef = null;
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
@@ -462,7 +462,7 @@ class Demo {
       this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
   }
 
-  async _activateMagicWindow (ctx) {
+  async _activateMagicWindow(ctx) {
     if (!this._xrDevice) {
       return;
     }
@@ -524,7 +524,7 @@ class Demo {
     };
   }
 
-  async _activateVR () {
+  async _activateVR() {
     if (!this._xrDevice) {
       return;
     }
@@ -570,14 +570,20 @@ class Demo {
 
     let controls_yaw = this._controls.getObject();
 
-    if ((this._movingDirection & Direction.Forward) === Direction.Forward) this._velocity.z += 100.0 * delta;
-    if ((this._movingDirection & Direction.Backward) === Direction.Backward) this._velocity.z -= 100.0 * delta;
-    if ((this._movingDirection & Direction.Left) === Direction.Left) this._velocity.x += 100.0 * delta;
-    if ((this._movingDirection & Direction.Right) === Direction.Right) this._velocity.x -= 100.0 * delta;
+    let movingDistance = 100.0 * delta;
+    if ((this._movingDirection & Direction.Forward) === Direction.Forward)
+      this._velocity.z += movingDistance;
+    if ((this._movingDirection & Direction.Backward) === Direction.Backward)
+      this._velocity.z -= movingDistance;
+    if ((this._movingDirection & Direction.Left) === Direction.Left)
+      this._velocity.x += movingDistance;
+    if ((this._movingDirection & Direction.Right) === Direction.Right)
+      this._velocity.x -= movingDistance;
 
     controls_yaw.translateX(this._velocity.x * delta);
     controls_yaw.translateZ(this._velocity.z * delta);
 
+    // Check bounds so we don't walk through the walls.
     if (controls_yaw.position.z > 6)
       controls_yaw.position.z = 6;
     if (controls_yaw.position.z < -2)
@@ -591,7 +597,7 @@ class Demo {
     this._prevTime = time;
   }
 
-  _render (timestamp, xrFrame) {
+  _render(timestamp, xrFrame) {
     if (!this._xrSession) {
       // Ensure that we switch everything back to auto for non-VR mode.
       this._onResize();
@@ -644,7 +650,7 @@ class Demo {
     this._xrSession.requestAnimationFrame(this._update);
   }
 
-  _renderEye (viewMatrixArray, projectionMatrix, viewport) {
+  _renderEye(viewMatrixArray, projectionMatrix, viewport) {
     // Set the left or right eye half.
     this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
@@ -689,10 +695,15 @@ class Demo {
 
     let delta_z = 0;
     let delta_x = 0;
-    if ((this._movingDirection & Direction.Forward) === Direction.Forward) delta_z = 70.0 * delta * delta;
-    if ((this._movingDirection & Direction.Backward) === Direction.Backward) delta_z = -70.0 * delta * delta;
-    if ((this._movingDirection & Direction.Left) === Direction.Left) delta_x = 70.0 * delta * delta;
-    if ((this._movingDirection & Direction.Right) === Direction.Right) delta_x = -70.0 * delta * delta;
+    let movingDistance = 70.0 * delta * delta;
+    if ((this._movingDirection & Direction.Forward) === Direction.Forward)
+      delta_z = movingDistance;
+    if ((this._movingDirection & Direction.Backward) === Direction.Backward)
+      delta_z = -movingDistance;
+    if ((this._movingDirection & Direction.Left) === Direction.Left)
+      delta_x = movingDistance;
+    if ((this._movingDirection & Direction.Right) === Direction.Right)
+      delta_x = -movingDistance;
 
     // Move back to view coordinates.
     let deltaPosition = new THREE.Vector3(delta_x, 0, delta_z);
@@ -700,7 +711,7 @@ class Demo {
 
     this._userPosition.add(deltaPosition);
 
-    // Check bounds.
+    // Check bounds so we don't walk through the walls.
     if (this._userPosition.z > 2)
       this._userPosition.z = 2;
     if (this._userPosition.z < -6)
@@ -713,15 +724,30 @@ class Demo {
     this._prevTime = time;
   }
 
-  _translateViewMatrix(viewMatrix, translationVector) {
-    let translationInView = new THREE.Vector3();
-    translationInView.copy(translationVector);
+  _translateViewMatrix(viewMatrix, position) {
+    // Let's save the current position before working on it.
+    let positionInView = new THREE.Vector3(
+      position.x,
+      position.y,
+      position.z
+    );
     let viewMatrixWithoutTranslation = new THREE.Matrix4();
     viewMatrixWithoutTranslation.copy(viewMatrix);
+    // The reason we do this here is because the view matrix may have
+    // a position set, for example in a 6DoF system or on a 3 DoF
+    // system where the height is emulated. What we want to do here is
+    // to apply the view matrix on our user position.
     viewMatrixWithoutTranslation.setPosition(new THREE.Vector3());
-    translationInView.applyMatrix4(viewMatrixWithoutTranslation);
+    // The result below gives us the position after the rotation of the
+    // view has been applied. This will make the direction right.
+    positionInView.applyMatrix4(viewMatrixWithoutTranslation);
     let translationInViewMatrix = new THREE.Matrix4();
-    translationInViewMatrix.makeTranslation(translationInView.x, translationInView.y, translationInView.z);
+    // Let's build a translation matrix out of rotated position. We don't need to
+    // care about the rotation because we're going to apply that translation
+    // on the view matrix (which is rotated and translated).
+    translationInViewMatrix.makeTranslation(positionInView.x, positionInView.y, positionInView.z);
+    // pre-multiply because we want to translate before rotating. Otherwise we
+    // may end up with a wrong position.
     viewMatrix.premultiply(translationInViewMatrix);
   }
 
@@ -731,12 +757,30 @@ class Demo {
     if (!inputPose) {
       return;
     }
+    let pointerMatrix = new THREE.Matrix4();
+    pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+    let raycaster = new THREE.Raycaster();
+    this._setupControllerRaycast(raycaster, pointerMatrix);
+    let intersects = raycaster.intersectObject(this._floor);
+    for (let intersect of intersects) {
+      let position = new THREE.Vector3();
+      pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -intersect.distance));
+      pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+      // We never move in the y direction in this demo.
+      position.y = 0;
+      // This is the new position for the user.
+      this._userPosition.copy(position);
+      break;
+    }
+  }
 
+  _setupControllerRaycast(raycaster, pointerMatrix) {
+    // We should probably use XRay here but the
+    // origin and direction doesn't really work here.
     let raycasterOrigin = new THREE.Vector3();
     let raycasterDestination = new THREE.Vector3(0, 0, -1);
-    let pointerMatrix = new THREE.Matrix4();
     let pointerWorldMatrix = new THREE.Matrix4();
-    pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+    // If the user moved, we need to translate the controllers.
     let currentPosition = new THREE.Vector3(
       this._userPosition.x,
       this._userPosition.y,
@@ -747,17 +791,7 @@ class Demo {
     pointerMatrix.setPosition(currentPosition);
     pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
     raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
-    let raycaster = new THREE.Raycaster();
     raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
-    let intersects = raycaster.intersectObject(this._floor);
-    for (let intersect of intersects) {
-      let position = new THREE.Vector3();
-      pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -intersect.distance + 0.1));
-      pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
-      position.y = 0;
-      this._userPosition.copy(position);
-      break;
-    }
   }
 
   _updateInput(xrFrame) {
@@ -774,8 +808,6 @@ class Demo {
 
       if (inputPose.targetRay) {
         let color = this._getRandomColor();
-        let raycasterOrigin = new THREE.Vector3();
-        let raycasterDestination = new THREE.Vector3(0, 0, -1);
         let cursor = null;
 
         if (this._activeCursors < this._cursors.length) {
@@ -791,23 +823,11 @@ class Demo {
         }
         this._activeCursors = this._activeCursors + 1;
 
-        let pointerMatrix = new THREE.Matrix4();
-        let pointerWorldMatrix = new THREE.Matrix4();
         let laserLength = 0;
+        let pointerMatrix = new THREE.Matrix4();
         pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
-        let currentPosition = new THREE.Vector3(
-          this._userPosition.x,
-          this._userPosition.y,
-          this._userPosition.z);
-        let pointerPosition = new THREE.Vector3();
-        pointerMatrix.decompose(pointerPosition, new THREE.Quaternion(), new THREE.Vector3());
-        currentPosition.add(pointerPosition);
-        pointerMatrix.setPosition(currentPosition);
-        pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
-        raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
-
         let raycaster = new THREE.Raycaster();
-        raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
+        this._setupControllerRaycast(raycaster, pointerMatrix);
         let intersects = raycaster.intersectObjects(this._scene.children, true);
 
         for (let intersect of intersects) {
