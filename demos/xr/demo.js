@@ -19,6 +19,14 @@
 
 var polyfill = new WebXRPolyfill();
 
+const Direction = {
+  Stopped: 0,
+  Left: 1,
+  Right: 2,
+  Forward: 4,
+  Backward: 8
+}
+
 class Demo {
 
   static get CAMERA_SETTINGS () {
@@ -44,7 +52,7 @@ class Demo {
     this._boxMaterialGray;
     this._container = document.querySelector('#container');
     this._startMessage = document.querySelector('#start');
-    this._touchControls = document.querySelector('#touchControls');
+    this._touchControls = document.querySelector('#joystickControls');
 
     this.clearContainer();
     this.createRenderer();
@@ -75,10 +83,7 @@ class Demo {
     this._prevTime = performance.now();
     this._velocity = new THREE.Vector3();
     this._userPosition = new THREE.Vector3();
-    this._moveForward = false;
-    this._moveBackward = false;
-    this._moveRight = false;
-    this._moveLeft = false;
+    this._movingDirection = Direction.Stopped;
     this._checkForXR();
   }
 
@@ -123,18 +128,19 @@ class Demo {
     switch ( event.keyCode ) {
       case 38: // up
       case 87: // w
-        this._moveForward = true;
+        this._movingDirection |= Direction.Forward;
         break;
       case 37: // left
       case 65: // a
-        this._moveLeft = true; break;
+        this._movingDirection |= Direction.Left;
+        break;
       case 40: // down
       case 83: // s
-        this._moveBackward = true;
+        this._movingDirection |= Direction.Backward;
         break;
       case 39: // right
       case 68: // d
-        this._moveRight = true;
+        this._movingDirection |= Direction.Right;
         break;
     }
   }
@@ -143,19 +149,19 @@ class Demo {
     switch( event.keyCode ) {
       case 38: // up
       case 87: // w
-        this._moveForward = false;
+        this._movingDirection &= ~Direction.Forward;
         break;
       case 37: // left
       case 65: // a
-        this._moveLeft = false;
+        this._movingDirection &= ~Direction.Left;
         break;
       case 40: // down
       case 83: // s
-        this._moveBackward = false;
+        this._movingDirection &= ~Direction.Backward;
         break;
       case 39: // right
       case 68: // d
-        this._moveRight = false;
+        this._movingDirection &= ~Direction.Right;
         break;
     }
   }
@@ -478,45 +484,34 @@ class Demo {
       this._userPosition.set(0, 0 ,0);
 
       this._showTouchControls();
-      const selectedColor = "#e00d26";
-      const baseColor = "black";
       if (window.PointerEvent) {
-        const left = document.querySelector('#left');
-        left.addEventListener('pointerdown', ev => {
-          this._moveLeft = true;
-          left.style.borderRightColor = selectedColor;
+        const joystick = document.querySelector('#joystick');
+        joystick.addEventListener('pointerdown', ev => {
+          this._joystickOriginX = ev.x;
+          this._joystickOriginY = ev.y;
         });
-        ['pointerup', 'pointerout'].forEach(ev => left.addEventListener(ev, _ => {
-          this._moveLeft = false;
-          left.style.borderRightColor = baseColor;
-        }));
-        const up = document.querySelector('#up');
-        up.addEventListener('pointerdown', ev => {
-          this._moveForward = true;
-          up.style.borderBottomColor = selectedColor;
+        joystick.addEventListener('pointermove', ev => {
+          let deltaX = ev.x - this._joystickOriginX;
+          let deltaY = ev.y - this._joystickOriginY;
+          if ((deltaX <= 70 && deltaX >= -70) && (deltaY <= 70 && deltaY >= -70))
+            joystick.style.transform = 'translate(' + deltaX + 'px,' + deltaY + 'px)';
+          let rotation = Math.atan2(deltaY, deltaX);
+          let angle45Degree = Math.PI / 4;
+          if (rotation > angle45Degree && rotation < angle45Degree * 3)
+            this._movingDirection = Direction.Backward;
+          else if (rotation < -angle45Degree && rotation > -angle45Degree * 3)
+            this._movingDirection = Direction.Forward;
+          else if (rotation >= 0 && rotation <= angle45Degree)
+            this._movingDirection = Direction.Right;
+          else if (rotation <= -angle45Degree * 3 || rotation >= angle45Degree * 3)
+            this._movingDirection = Direction.Left;
         });
-        ['pointerup', 'pointerout'].forEach(ev => up.addEventListener(ev, _ => {
-          this._moveForward = false;
-          up.style.borderBottomColor = baseColor;
-        }));
-        const down = document.querySelector('#down');
-        down.addEventListener('pointerdown', ev => {
-          this._moveBackward = true;
-          down.style.borderTopColor = selectedColor;
+        joystick.addEventListener('pointerup', ev => {
+          this._joystickOriginX = 0;
+          this._joystickOriginY = 0;
+          this._movingDirection = Direction.Stopped;
+          joystick.style.transform = 'translate(0px, 0px)';
         });
-        ['pointerup', 'pointerout'].forEach(ev => down.addEventListener(ev, _ => {
-          this._moveBackward = false;
-          down.style.borderTopColor = baseColor;
-        }));
-        const right = document.querySelector('#right');
-        right.addEventListener('pointerdown', ev => {
-          this._moveRight = true;
-          right.style.borderLeftColor = selectedColor;
-        });
-        ['pointerup', 'pointerout'].forEach(ev => right.addEventListener(ev, _ => {
-          this._moveRight = false;
-          right.style.borderLeftColor = baseColor;
-        }));
       } else {
         // FIXME: touch events for iOS.
       }
@@ -575,10 +570,10 @@ class Demo {
 
     let controls_yaw = this._controls.getObject();
 
-    if (this._moveForward) this._velocity.z += 100.0 * delta;
-    if (this._moveBackward) this._velocity.z -= 100.0 * delta;
-    if (this._moveLeft) this._velocity.x += 100.0 * delta;
-    if (this._moveRight) this._velocity.x -= 100.0 * delta;
+    if ((this._movingDirection & Direction.Forward) === Direction.Forward) this._velocity.z += 100.0 * delta;
+    if ((this._movingDirection & Direction.Backward) === Direction.Backward) this._velocity.z -= 100.0 * delta;
+    if ((this._movingDirection & Direction.Left) === Direction.Left) this._velocity.x += 100.0 * delta;
+    if ((this._movingDirection & Direction.Right) === Direction.Right) this._velocity.x -= 100.0 * delta;
 
     controls_yaw.translateX(this._velocity.x * delta);
     controls_yaw.translateZ(this._velocity.z * delta);
@@ -657,7 +652,7 @@ class Demo {
     viewMatrix.fromArray(viewMatrixArray);
 
     if (this._magicWindowCanvas && this._magicWindowCanvas.hidden === false) {
-      this._calculateMagicWindowPosition(viewMatrix);
+      this._updateMagicWindowPosition(viewMatrix);
       this._translateViewMatrix(viewMatrix, this._userPosition);
     } else {
       // We need to adjust the view matrix if the user was teleported.
@@ -677,7 +672,7 @@ class Demo {
     this._renderer.clearDepth();
   }
 
-  _calculateMagicWindowPosition(viewMatrix) {
+  _updateMagicWindowPosition(viewMatrix) {
     let rotation = new THREE.Quaternion();
     viewMatrix.decompose(new THREE.Vector3(), rotation, new THREE.Vector3());
     let time = performance.now();
@@ -694,10 +689,10 @@ class Demo {
 
     let delta_z = 0;
     let delta_x = 0;
-    if (this._moveForward) delta_z = 100.0 * delta * delta;
-    if (this._moveBackward) delta_z = -100.0 * delta * delta;
-    if (this._moveLeft) delta_x = 100.0 * delta * delta;
-    if (this._moveRight) delta_x = -100.0 * delta * delta;
+    if ((this._movingDirection & Direction.Forward) === Direction.Forward) delta_z = 70.0 * delta * delta;
+    if ((this._movingDirection & Direction.Backward) === Direction.Backward) delta_z = -70.0 * delta * delta;
+    if ((this._movingDirection & Direction.Left) === Direction.Left) delta_x = 70.0 * delta * delta;
+    if ((this._movingDirection & Direction.Right) === Direction.Right) delta_x = -70.0 * delta * delta;
 
     // Move back to view coordinates.
     let deltaPosition = new THREE.Vector3(delta_x, 0, delta_z);

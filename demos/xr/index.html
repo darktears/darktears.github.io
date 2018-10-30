@@ -8,8 +8,10 @@
         padding: 0;
         margin: 0;
         user-select: none;
-        overflow-x: hidden;
-        overflow-y: hidden;
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+        touch-action: none;
       }
       #container {
         height: 100%;
@@ -47,80 +49,26 @@
         justify-content: center;
         align-items: center;
       }
-      #touchControls {
+      #joystickControls {
         display: none;
         position: absolute;
         bottom: 20px;
         right: 20px;
         width: 150px;
         height: 150px;
-        background: white;
+        background: rgba(255, 255, 255, 0.562);
         border-radius: 75px;
-        pointer-events: none;
       }
-      #up {
+      #joystick {
+        display: block;
         position: absolute;
-        top: 0px;
-        left: 55px;
-        width: 0;
-        height: 0;
-        border-left: 20px solid transparent;
-        border-right: 20px solid transparent;
-        border-bottom: 50px solid black;
+        width: 100px;
+        height: 100px;
+        left: 25px;
+        bottom: 25px;
+        background: rgba(141, 140, 140, 0.562);
+        border-radius: 75px;
         pointer-events: all;
-      }
-      #down {
-        position: absolute;
-        bottom: 0px;
-        left: 55px;
-        width: 0;
-        height: 0;
-        border-left: 20px solid transparent;
-        border-right: 20px solid transparent;
-        border-top: 50px solid black;
-        pointer-events: all;
-      }
-      #right {
-        position: absolute;
-        bottom: 55px;
-        right: 0px;
-        width: 0;
-        height: 0;
-        border-top: 20px solid transparent;
-        border-left: 50px solid black;
-        border-bottom: 20px solid transparent;
-        pointer-events: all;
-      }
-      #left {
-        position: absolute;
-        bottom: 55px;
-        left: 0px;
-        width: 0;
-        height: 0;
-        border-top: 20px solid transparent;
-        border-right: 50px solid black;
-        border-bottom: 20px solid transparent;
-        pointer-events: all;
-      }
-      #line1 {
-        width: 150px;
-        height: 150px;
-        border-bottom: 1px dashed black;
-        transform:
-            translateY(-52px)
-            translateX(54px)
-            rotate(45deg);
-        position: absolute;
-      }
-      #line2{
-        width: 150px;
-        height: 150px;
-        border-bottom: 1px dashed black;
-        transform:
-            translateY(-52px)
-            translateX(-54px)
-            rotate(-45deg);
-        position: absolute;
       }
     </style>
     <script src="node_modules/three/build/three.min.js"></script>
@@ -130,16 +78,11 @@
     <script src="node_modules/webxr-polyfill/build/webxr-polyfill.min.js"></script>
   </head>
   <body>
-    <div id="container"></div>
-    <div id="touchControls">
-      <div id="line1"></div>
-      <div id="left"></div>
-      <div id="up"></div>
-      <div id="right"></div>
-      <div id="down"></div>
-      <div id="line2"></div>
-    </div>
     <div id="start">Click to get started</div>
+    <div id="container"></div>
+    <div id="joystickControls">
+      <div id="joystick"></div>
+    </div>
     <script src="demo.js"></script>
   </body>
 </html>
