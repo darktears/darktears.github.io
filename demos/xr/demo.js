@@ -658,6 +658,8 @@ class Demo {
     viewMatrix.fromArray(viewMatrixArray);
 
     if (this._magicWindowCanvas && this._magicWindowCanvas.hidden === false) {
+      // This will adjust the position of the user depending if
+      // the keypad was pressed.
       this._updateMagicWindowPosition(viewMatrix);
       this._translateViewMatrix(viewMatrix, this._userPosition);
     } else {
@@ -689,7 +691,9 @@ class Demo {
     this._velocity.z -= this._velocity.z * 10.0 * delta;
 
     let invertedRotation = rotation.inverse();
-    // Extract the yaw rotation only.
+    // Extract the yaw rotation only because x and z axis rotations are
+    // not needed to translate the user position. The following code
+    // renormalize on the Y axis.
     let norm = Math.sqrt(invertedRotation.w * invertedRotation.w + invertedRotation.y * invertedRotation.y);
     let invertedYawRotation = new THREE.Quaternion(0, invertedRotation.y / norm, 0, invertedRotation.w / norm);
 
@@ -707,6 +711,8 @@ class Demo {
 
     // Move back to view coordinates.
     let deltaPosition = new THREE.Vector3(delta_x, 0, delta_z);
+    // This will make sure that the translation from the keypad is always
+    // done in the right direction regardless the rotation.
     deltaPosition.applyQuaternion(invertedYawRotation);
 
     this._userPosition.add(deltaPosition);
@@ -848,6 +854,8 @@ class Demo {
               let quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
               cursor.quaternion.copy(quaternion);
             }
+            // Tracked pointer means it's a controller (not originating from the
+            // head), we can draw a laser.
             if (inputSource.targetRayMode == 'tracked-pointer')
               this._drawStraightLaser(laser, laserLength, pointerMatrix, cursor);
             pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, laserLength));
@@ -855,6 +863,8 @@ class Demo {
             pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
             cursor.position.copy(position);
           }
+          // This will make sure the cursor is parrallel to the intersect
+          // object, it feels nice to me.
           cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z);
           break;
         }
@@ -907,6 +917,8 @@ class Demo {
     controller.matrixAutoUpdate = false;
     let grip = new THREE.Matrix4();
     grip.fromArray(gripMatrix);
+    // We need to translate the controller mesh as well if the
+    // user did teleport.
     let currentPosition = new THREE.Vector3(
       this._userPosition.x,
       this._userPosition.y,
