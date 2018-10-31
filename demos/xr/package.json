@@ -1,15 +1,23 @@
 {
-  "name": "WebXR Demo",
+  "name": "xr",
   "version": "1.0.0",
-  "description": "Simple WebXR Demo",
+  "description": "This is a demo for WebXR Device API.",
   "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darktears/darktears.github.io/tree/master/demos/xr"
+  },
+  "keywords": [
+    "XR",
+    "VR"
+  ],
+  "author": "Alexis Menard",
+  "license": "BSD-2-Clause",
   "dependencies": {
-    "three": "^0.93.0",
+    "three": "^0.97.0",
     "webxr-polyfill": "^1.0.6"
   }
 }
