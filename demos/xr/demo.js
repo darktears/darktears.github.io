@@ -109,7 +109,7 @@ class Demo {
     this._controls = new THREE.PointerLockControls(this._camera);
     this._scene.add(this._controls.getObject());
     this._controls.getObject().position.y = 1;
-    this._camera.lookAt(new THREE.Vector3(0, 0, 1));
+    this._camera.lookAt(new THREE.Vector3(0, 1, 1));
     // Hook pointer lock state change events
     document.addEventListener('pointerlockchange', _ => { this._pointerLockChanged() }, false );
     document.addEventListener('mozpointerlockchange', _ => { this._pointerLockChanged() }, false );
@@ -290,6 +290,7 @@ class Demo {
 
   createRenderer() {
     this._renderer = new THREE.WebGLRenderer({ antialias : true });
+    this._renderer.shadowMap.enabled = true;
     this._container.appendChild(this._renderer.domElement);
   }
 
@@ -310,10 +311,12 @@ class Demo {
   createMeshes() {
     // Box.
     const boxGeometry = new THREE.BoxGeometry(2, 1, 1);
-    let webxr = new new THREE.TextureLoader().load('webxr.jpg');
-    let webxrGray = new new THREE.TextureLoader().load('webxr-gray.jpg');
-
-    this._boxMaterial = new THREE.MeshBasicMaterial({map:webxr, side:THREE.DoubleSide});
+    let webxr = new THREE.TextureLoader().load('webxr.jpg');
+    let webxrGray = new THREE.TextureLoader().load('webxr-gray.jpg');
+    this._boxMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        map: webxr
+    });
     this._boxMaterialGray = new THREE.MeshBasicMaterial({map:webxrGray, side:THREE.DoubleSide});
 
     this._box = new THREE.Mesh(boxGeometry, this._boxMaterial);
@@ -323,42 +326,78 @@ class Demo {
     this._scene.add(this._box);
 
     // Room.
-    let roofTexture = new THREE.TextureLoader().load('ceiling.jpg');
+    let roofTexture = new THREE.TextureLoader().load('ceiling.png');
     roofTexture.wrapS = roofTexture.wrapT = THREE.RepeatWrapping;
     roofTexture.repeat.set(8, 8);
 
-    let wallTexture = new THREE.TextureLoader().load('wall1.jpg' );
-    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-    wallTexture.repeat.set(3, 1);
+    let roofNormal = new THREE.TextureLoader().load('ceiling-normal.png');
+    roofNormal.wrapS = roofNormal.wrapT = THREE.RepeatWrapping;
+    roofNormal.repeat.set(8, 8);
 
-    let floorTexture = new THREE.TextureLoader().load('floor.jpg');
+    let wallTexture = new THREE.TextureLoader().load('wall.png');
+    wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(6, 2);
+
+    let wallBump = new THREE.TextureLoader().load('wall-bump.png');
+    wallBump.wrapS = wallBump.wrapT = THREE.RepeatWrapping;
+    wallBump.repeat.set(6, 2);
+
+    let wallNormal = new THREE.TextureLoader().load('wall-normal.png');
+    wallNormal.wrapS = wallNormal.wrapT = THREE.RepeatWrapping;
+    wallNormal.repeat.set(6, 2);
+
+    let wallSpecular= new THREE.TextureLoader().load('wall-specular.png');
+    wallSpecular.wrapS = wallSpecular.wrapT = THREE.RepeatWrapping;
+    wallSpecular.repeat.set(6, 2);
+
+    let floorTexture = new THREE.TextureLoader().load('wood.png');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(20, 20);
+    floorTexture.repeat.set(10, 10);
+
+    let floorNormalMap = new THREE.TextureLoader().load('wood-normal.png');
+    floorNormalMap.wrapS = floorNormalMap.wrapT = THREE.RepeatWrapping;
+    floorNormalMap.repeat.set(10, 10);
+
+    let floorSpecularMap = new THREE.TextureLoader().load('wood-specular.png');
+    floorSpecularMap.wrapS = floorSpecularMap.wrapT = THREE.RepeatWrapping;
+    floorSpecularMap.repeat.set(10, 10);
+
+    let floorBumpMap = new THREE.TextureLoader().load('wood-bump.png');
+    floorBumpMap.wrapS = floorBumpMap.wrapT = THREE.RepeatWrapping;
+    floorBumpMap.repeat.set(10, 10);
 
     let wallMaterial = [
-      new THREE.MeshBasicMaterial({
+      new THREE.MeshPhongMaterial({
           map: wallTexture,
+          normalMap: wallNormal,
+          bumpMap: wallBump,
+          specularMap: wallSpecular,
           side: THREE.DoubleSide
       })
     ];
 
     let roofMaterial = [
-      new THREE.MeshBasicMaterial({
+      new THREE.MeshPhongMaterial({
           map: roofTexture,
+          normalMap: roofNormal,
           side: THREE.DoubleSide
       })
     ];
 
     let floorMaterial = [
-      new THREE.MeshBasicMaterial({
+      new THREE.MeshPhongMaterial({
           map: floorTexture,
-          side: THREE.BackSide
+          normalMap: floorNormalMap,
+          specularMap: floorSpecularMap,
+          bumpMap: floorBumpMap,
+          side: THREE.FrontSide
       })
     ];
 
     //Build the walls.
     const roomGeometry = new THREE.PlaneGeometry(10, 3);
     let wall = new THREE.Mesh(roomGeometry, wallMaterial);
+    wall.reflectivity = 0;
     wall.position.z = 7;
     wall.position.y = 1;
     this._scene.add(wall);
@@ -382,24 +421,23 @@ class Demo {
     wall.rotation.y = -Math.PI / 2;
     this._scene.add(wall);
 
-    const squareGeometry = new THREE.PlaneGeometry(10, 10);
+    const squareGeometry = new THREE.PlaneGeometry(10, 10, 128, 128);
     this._floor = new THREE.Mesh(squareGeometry, floorMaterial);
     this._floor.position.z = 2;
     this._floor.position.y = -0.5;
-    this._floor.rotation.x = Math.PI / 2;
+    this._floor.rotation.x = -Math.PI / 2;
     this._floor.name = "floor";
+    this._floor.receiveShadow = true;
     this._scene.add(this._floor);
 
     let roof = new THREE.Mesh(squareGeometry, roofMaterial);
     roof.position.z = 2;
     roof.position.y = 2.5;
-    roof.rotation.x = Math.PI / 2;
+    roof.rotation.x = -Math.PI / 2;
     this._scene.add(roof);
 
-    let light = new THREE.PointLight('#ffffff', 1, 0, 0.5 );
-    light.position.y = 2;
-    light.name = "light";
-    this._scene.add(light);
+    let ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    this._scene.add(ambientLight);
   }
 
   _createPresentationButton() {
