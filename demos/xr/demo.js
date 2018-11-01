@@ -212,6 +212,7 @@ class Demo {
   _handlePointerDown(ev) {
     this._joystickOriginX = ev.x;
     this._joystickOriginY = ev.y;
+    this._currentPointerId = ev.pointerId;
   }
 
   _handleTouchStart(ev) {
@@ -223,6 +224,8 @@ class Demo {
   }
 
   _handlePointerMove(ev) {
+    if(this._currentPointerId === null)
+      return;
     let deltaX = ev.x - this._joystickOriginX;
     let deltaY = ev.y - this._joystickOriginY;
     this._computeDirection(deltaX, deltaY);
@@ -262,6 +265,7 @@ class Demo {
     this._joystickOriginX = 0;
     this._joystickOriginY = 0;
     this._currentTouchId	= null;
+    this._currentPointerId = null;
     this._movingDirection = Direction.Stopped;
     this._joystick.style.transform = 'translate(0px, 0px)';
   }
