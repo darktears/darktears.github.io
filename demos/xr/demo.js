@@ -580,6 +580,7 @@ class Demo {
                   this._movingDirection = Direction.Left;
               }
           }
+          ev.preventDefault();
         });
         joystick.addEventListener('touchend', ev => {
           this._joystickOriginX = 0;
