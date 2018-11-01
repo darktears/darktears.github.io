@@ -53,6 +53,7 @@ class Demo {
     this._container = document.querySelector('#container');
     this._startMessage = document.querySelector('#start');
     this._touchControls = document.querySelector('#joystickControls');
+    this._joystick = document.querySelector('#joystick');
 
     this.clearContainer();
     this.createRenderer();
@@ -119,7 +120,9 @@ class Demo {
 
     document.body.addEventListener( 'click', _ => {
       // Ask the browser to lock the pointer
-      document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock;
+      document.body.requestPointerLock = document.body.requestPointerLock ||
+        document.body.mozRequestPointerLock ||
+        document.body.webkitRequestPointerLock;
       document.body.requestPointerLock();
     }, false);
   }
@@ -176,14 +179,96 @@ class Demo {
 
   _hideTouchControls() {
     this._touchControls.style.display = 'none';
+    if (window.PointerEvent) {
+      joystick.removeEventListener('pointerdown', this._handlePointerDown);
+      joystick.removeEventListener('pointermove', this._handlePointerMove);
+      joystick.removeEventListener('pointerup', this._handleTouchEnd);
+    } else {
+      joystick.removeEventListener('touchstart', this._handleTouchStart);
+      joystick.removeEventListener('touchmove', this._handleTouchMove);
+      joystick.removeEventListener('touchend', this._handleTouchEnd);
+    }
   }
 
   _showTouchControls() {
     this._touchControls.style.display = 'inline';
+    this._handleTouchEnd = this._handleTouchEnd.bind(this);
+    if (window.PointerEvent) {
+      this._handlePointerMove = this._handlePointerMove.bind(this);
+      this._handlePointerDown = this._handlePointerDown.bind(this);
+      joystick.addEventListener('pointerdown', this._handlePointerDown);
+      joystick.addEventListener('pointermove', this._handlePointerMove);
+      joystick.addEventListener('pointerup', this._handleTouchEnd);
+    } else {
+      this._handleTouchMove = this._handleTouchMove.bind(this);
+      this._handleTouchStart = this._handleTouchStart.bind(this);
+      joystick.addEventListener('touchstart', this._handleTouchStart);
+      joystick.addEventListener('touchmove', this._handleTouchMove);
+      joystick.addEventListener('touchend', this._handleTouchEnd);
+    }
+  }
+
+  _handlePointerDown(ev) {
+    this._joystickOriginX = ev.x;
+    this._joystickOriginY = ev.y;
+  }
+
+  _handleTouchStart(ev) {
+    let touch	= event.changedTouches[0];
+    this._currentTouchId	= touch.identifier;
+    this._joystickOriginX = touch.pageX;
+    this._joystickOriginY = touch.pageY;
+    ev.preventDefault();
+  }
+
+  _handlePointerMove(ev) {
+    let deltaX = ev.x - this._joystickOriginX;
+    let deltaY = ev.y - this._joystickOriginY;
+    this._computeDirection(deltaX, deltaY);
+  }
+
+  _handleTouchMove(ev) {
+    if( this._currentTouchId === null)
+      return;
+    let touchList	= ev.changedTouches;
+    for(let i = 0; i < touchList.length; i++) {
+        if(touchList[i].identifier == this._currentTouchId) {
+          var touch	= touchList[i];
+          let deltaX = touch.pageX - this._joystickOriginX;
+          let deltaY = touch.pageY - this._joystickOriginY;
+          this._computeDirection(deltaX, deltaY);
+          ev.preventDefault();
+        }
+    }
+  }
+
+  _computeDirection(deltaX, deltaY) {
+    if ((deltaX <= 70 && deltaX >= -70) && (deltaY <= 70 && deltaY >= -70))
+      joystick.style.transform = 'translate(' + deltaX + 'px,' + deltaY + 'px)';
+    let rotation = Math.atan2(deltaY, deltaX);
+    let angle45Degree = Math.PI / 4;
+    if (rotation > angle45Degree && rotation < angle45Degree * 3)
+      this._movingDirection = Direction.Backward;
+    else if (rotation < -angle45Degree && rotation > -angle45Degree * 3)
+      this._movingDirection = Direction.Forward;
+    else if (rotation >= 0 && rotation <= angle45Degree)
+      this._movingDirection = Direction.Right;
+    else if (rotation <= -angle45Degree * 3 || rotation >= angle45Degree * 3)
+      this._movingDirection = Direction.Left;
+  }
+
+  _handleTouchEnd() {
+    this._joystickOriginX = 0;
+    this._joystickOriginY = 0;
+    this._currentTouchId	= null;
+    this._movingDirection = Direction.Stopped;
+    this._joystick.style.transform = 'translate(0px, 0px)';
   }
 
   _pointerLockChanged() {
-    if (document.pointerLockElement === document.body || document.mozPointerLockElement === document.body || document.webkitPointerLockElement === document.body) {
+    if (document.pointerLockElement === document.body ||
+        document.mozPointerLockElement === document.body ||
+        document.webkitPointerLockElement === document.body) {
       this._controls.enabled = true;
       this._hideStartMessage();
     } else {
@@ -522,75 +607,6 @@ class Demo {
       this._userPosition.set(0, 0 ,0);
 
       this._showTouchControls();
-      const joystick = document.querySelector('#joystick');
-      if (window.PointerEvent) {
-        joystick.addEventListener('pointerdown', ev => {
-          this._joystickOriginX = ev.x;
-          this._joystickOriginY = ev.y;
-        });
-        joystick.addEventListener('pointermove', ev => {
-          let deltaX = ev.x - this._joystickOriginX;
-          let deltaY = ev.y - this._joystickOriginY;
-          if ((deltaX <= 70 && deltaX >= -70) && (deltaY <= 70 && deltaY >= -70))
-            joystick.style.transform = 'translate(' + deltaX + 'px,' + deltaY + 'px)';
-          let rotation = Math.atan2(deltaY, deltaX);
-          let angle45Degree = Math.PI / 4;
-          if (rotation > angle45Degree && rotation < angle45Degree * 3)
-            this._movingDirection = Direction.Backward;
-          else if (rotation < -angle45Degree && rotation > -angle45Degree * 3)
-            this._movingDirection = Direction.Forward;
-          else if (rotation >= 0 && rotation <= angle45Degree)
-            this._movingDirection = Direction.Right;
-          else if (rotation <= -angle45Degree * 3 || rotation >= angle45Degree * 3)
-            this._movingDirection = Direction.Left;
-        });
-        joystick.addEventListener('pointerup', ev => {
-          this._joystickOriginX = 0;
-          this._joystickOriginY = 0;
-          this._movingDirection = Direction.Stopped;
-          joystick.style.transform = 'translate(0px, 0px)';
-        });
-      } else {
-        joystick.addEventListener('touchstart', ev => {
-          let touch	= event.changedTouches[0];
-          this._currentTouchId	= touch.identifier;
-          this._joystickOriginX = touch.pageX;
-          this._joystickOriginY = touch.pageY;
-          ev.preventDefault();
-        });
-        joystick.addEventListener('touchmove', ev => {
-          if( this._currentTouchId === null)
-            return;
-          let touchList	= ev.changedTouches;
-          for(let i = 0; i < touchList.length; i++) {
-              if(touchList[i].identifier == this._currentTouchId) {
-                var touch	= touchList[i];
-                let deltaX = touch.pageX - this._joystickOriginX;
-                let deltaY = touch.pageY - this._joystickOriginY;
-                if ((deltaX <= 70 && deltaX >= -70) && (deltaY <= 70 && deltaY >= -70))
-                  joystick.style.transform = 'translate(' + deltaX + 'px,' + deltaY + 'px)';
-                let rotation = Math.atan2(deltaY, deltaX);
-                let angle45Degree = Math.PI / 4;
-                if (rotation > angle45Degree && rotation < angle45Degree * 3)
-                  this._movingDirection = Direction.Backward;
-                else if (rotation < -angle45Degree && rotation > -angle45Degree * 3)
-                  this._movingDirection = Direction.Forward;
-                else if (rotation >= 0 && rotation <= angle45Degree)
-                  this._movingDirection = Direction.Right;
-                else if (rotation <= -angle45Degree * 3 || rotation >= angle45Degree * 3)
-                  this._movingDirection = Direction.Left;
-              }
-          }
-          ev.preventDefault();
-        });
-        joystick.addEventListener('touchend', ev => {
-          this._joystickOriginX = 0;
-          this._joystickOriginY = 0;
-          this._currentTouchId	= null;
-          this._movingDirection = Direction.Stopped;
-          joystick.style.transform = 'translate(0px, 0px)';
-        });
-      }
 
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._update);
