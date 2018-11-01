@@ -556,6 +556,7 @@ class Demo {
           this._currentTouchId	= touch.identifier;
           this._joystickOriginX = touch.pageX;
           this._joystickOriginY = touch.pageY;
+          ev.preventDefault();
         });
         joystick.addEventListener('touchmove', ev => {
           if( this._currentTouchId === null)
