@@ -522,8 +522,8 @@ class Demo {
       this._userPosition.set(0, 0 ,0);
 
       this._showTouchControls();
+      const joystick = document.querySelector('#joystick');
       if (window.PointerEvent) {
-        const joystick = document.querySelector('#joystick');
         joystick.addEventListener('pointerdown', ev => {
           this._joystickOriginX = ev.x;
           this._joystickOriginY = ev.y;
@@ -551,7 +551,43 @@ class Demo {
           joystick.style.transform = 'translate(0px, 0px)';
         });
       } else {
-        // FIXME: touch events for iOS.
+        joystick.addEventListener('touchstart', ev => {
+          let touch	= event.changedTouches[0];
+          this._currentTouchId	= touch.identifier;
+          this._joystickOriginX = touch.pageX;
+          this._joystickOriginY = touch.pageY;
+        });
+        joystick.addEventListener('touchmove', ev => {
+          if( this._currentTouchId === null)
+            return;
+          let touchList	= ev.changedTouches;
+          for(let i = 0; i < touchList.length; i++) {
+              if(touchList[i].identifier == this._currentTouchId) {
+                var touch	= touchList[i];
+                let deltaX = touch.pageX - this._joystickOriginX;
+                let deltaY = touch.pageY - this._joystickOriginY;
+                if ((deltaX <= 70 && deltaX >= -70) && (deltaY <= 70 && deltaY >= -70))
+                  joystick.style.transform = 'translate(' + deltaX + 'px,' + deltaY + 'px)';
+                let rotation = Math.atan2(deltaY, deltaX);
+                let angle45Degree = Math.PI / 4;
+                if (rotation > angle45Degree && rotation < angle45Degree * 3)
+                  this._movingDirection = Direction.Backward;
+                else if (rotation < -angle45Degree && rotation > -angle45Degree * 3)
+                  this._movingDirection = Direction.Forward;
+                else if (rotation >= 0 && rotation <= angle45Degree)
+                  this._movingDirection = Direction.Right;
+                else if (rotation <= -angle45Degree * 3 || rotation >= angle45Degree * 3)
+                  this._movingDirection = Direction.Left;
+              }
+          }
+        });
+        joystick.addEventListener('touchend', ev => {
+          this._joystickOriginX = 0;
+          this._joystickOriginY = 0;
+          this._currentTouchId	= null;
+          this._movingDirection = Direction.Stopped;
+          joystick.style.transform = 'translate(0px, 0px)';
+        });
       }
 
       // Enter the rendering loop.
