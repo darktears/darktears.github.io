@@ -82,6 +82,7 @@ class Demo {
     this._prevTime = performance.now();
     this._velocity = new THREE.Vector3();
     this._userPosition = new THREE.Vector3();
+    this._userRotation = new THREE.Quaternion();
     this._movingDirection = Direction.Stopped;
   }
 
@@ -162,6 +163,23 @@ class Demo {
       case 39: // right
       case 68: // d
         this._movingDirection &= ~Direction.Right;
+        break;
+    }
+  }
+
+  _onKeyUpImmersive(event) {
+    switch(event.keyCode) {
+      case 37: // left
+      case 65: { // a
+          let rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3( 0, 1, 0 ), -Math.PI/6);
+          this._userRotation.multiply(rotation);
+        }
+        break;
+      case 39: // right
+      case 68: { // d
+          let rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3( 0, 1, 0 ), Math.PI/6);
+          this._userRotation.multiply(rotation);
+        }
         break;
     }
   }
@@ -533,6 +551,7 @@ class Demo {
       this._scene.remove(cursor);
     }
     this._cursors = [];
+    document.removeEventListener('keyup', event => { this._onKeyUpImmersive(event) }, false );
     requestAnimationFrame(this._render);
     if (this._magicWindowCanvas)
       this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
@@ -558,6 +577,7 @@ class Demo {
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
       this._userPosition.set(0, 0 ,0);
+      this._userRotation.set(0, 0, 0, 1);
 
       this._showTouchControls();
 
@@ -579,6 +599,8 @@ class Demo {
       this._xrSession = await this._xrDevice.requestSession({ immersive: true });
       this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
+      document.addEventListener('keyup', event => { this._onKeyUpImmersive(event) }, false );
+
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
 
@@ -589,9 +611,6 @@ class Demo {
       });
       this._xrSession.addEventListener('selectstart', (ev) => {
           this._handleSelectStart(ev.inputSource, ev.frame, this._xrFrameOfRef);
-      });
-      this._xrSession.addEventListener('selectend', (ev) => {
-          this._handleSelectEnd(ev.inputSource, ev.frame, this._xrFrameOfRef);
       });
 
       // Create the WebGL layer.
@@ -712,12 +731,12 @@ class Demo {
       // This will adjust the position of the user depending if
       // the keypad was pressed.
       this._updateMagicWindowPosition(viewMatrix);
-      this._translateViewMatrix(viewMatrix, this._userPosition);
+      this._translateAndRotateViewMatrix(viewMatrix, this._userPosition, new THREE.Quaternion);
     } else {
       // We need to adjust the view matrix if the user was teleported.
       let invertedTeleportTranslation = new THREE.Vector3();
       invertedTeleportTranslation.copy(this._userPosition).negate();
-      this._translateViewMatrix(viewMatrix, invertedTeleportTranslation);
+      this._translateAndRotateViewMatrix(viewMatrix, invertedTeleportTranslation, this._userRotation);
     }
     // Update the scene and camera matrices.
     this._camera.projectionMatrix.fromArray(projectionMatrix);
@@ -781,7 +800,7 @@ class Demo {
     this._prevTime = time;
   }
 
-  _translateViewMatrix(viewMatrix, position) {
+  _translateAndRotateViewMatrix(viewMatrix, position, rotation) {
     // Let's save the current position before working on it.
     let positionInView = new THREE.Vector3(
       position.x,
@@ -803,9 +822,12 @@ class Demo {
     // care about the rotation because we're going to apply that translation
     // on the view matrix (which is rotated and translated).
     translationInViewMatrix.makeTranslation(positionInView.x, positionInView.y, positionInView.z);
+    let rotationInViewMatrix = new THREE.Matrix4();
+    rotationInViewMatrix.makeRotationFromQuaternion(rotation);
     // pre-multiply because we want to translate before rotating. Otherwise we
     // may end up with a wrong position.
     viewMatrix.premultiply(translationInViewMatrix);
+    viewMatrix.premultiply(rotationInViewMatrix);
   }
 
   _handleSelect(inputSource, frame, frameOfRef) {
@@ -814,6 +836,12 @@ class Demo {
     if (!inputPose) {
       return;
     }
+
+    if(this._heartDragged) {
+      this._heartDragged = undefined;
+      return;
+    }
+
     let pointerMatrix = new THREE.Matrix4();
     pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
     let raycaster = new THREE.Raycaster();
@@ -853,15 +881,6 @@ class Demo {
     }
   }
 
-  _handleSelectEnd(inputSource, frame, frameOfRef) {
-    let inputPose = frame.getInputPose(inputSource, frameOfRef);
-
-    if (!inputPose) {
-      return;
-    }
-    this._heartDragged = undefined;
-  }
-
   _setupControllerRaycast(raycaster, pointerMatrix) {
     // We should probably use XRay here but the
     // origin and direction doesn't really work here.
@@ -873,10 +892,21 @@ class Demo {
       this._userPosition.x,
       this._userPosition.y,
       this._userPosition.z);
+    let currentRotation = new THREE.Quaternion(
+      this._userRotation.x,
+      this._userRotation.y,
+      this._userRotation.z,
+      this._userRotation.w);
     let pointerPosition = new THREE.Vector3();
-    pointerMatrix.decompose(pointerPosition, new THREE.Quaternion(), new THREE.Vector3());
+    let pointerRotation = new THREE.Quaternion();
+    pointerMatrix.decompose(pointerPosition, pointerRotation, new THREE.Vector3());
     currentPosition.add(pointerPosition);
+    currentRotation.inverse().multiply(pointerRotation);
+    let rotationMatrix = new THREE.Matrix4();
+    rotationMatrix.makeRotationFromQuaternion(currentRotation);
+    pointerMatrix.identity();
     pointerMatrix.setPosition(currentPosition);
+    pointerMatrix.multiply(rotationMatrix);
     pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
     raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
     raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
@@ -1007,11 +1037,21 @@ class Demo {
       this._userPosition.x,
       this._userPosition.y,
       this._userPosition.z);
+    let currentRotation = new THREE.Quaternion(
+        this._userRotation.x,
+        this._userRotation.y,
+        this._userRotation.z,
+        this._userRotation.w);
     let gripPosition = new THREE.Vector3();
     let gripRotation = new THREE.Quaternion();
     grip.decompose(gripPosition, gripRotation, new THREE.Vector3());
     currentPosition.add(gripPosition);
+    currentRotation.inverse().multiply(gripRotation);
+    let rotationMatrix = new THREE.Matrix4();
+    rotationMatrix.makeRotationFromQuaternion(currentRotation);
+    grip.identity();
     grip.setPosition(currentPosition);
+    grip.multiply(rotationMatrix);
     controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
 
@@ -1021,6 +1061,12 @@ class Demo {
         let norm = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.y * gripRotation.y);
         let diffYRotation = new THREE.Quaternion(0, gripRotation.y / norm, 0, gripRotation.w / norm);
         this._gltfObject.setRotationFromQuaternion(diffYRotation.inverse());
+
+        let norm2 = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.x * gripRotation.x);
+        let diffXRotation = new THREE.Quaternion(gripRotation.x / norm2, 0, 0, gripRotation.w / norm2);
+        var eulerRotation = new THREE.Euler();
+        eulerRotation.setFromQuaternion(diffXRotation);
+        this._gltfObject.position.z += eulerRotation.x / 10;
     }
   }
 
