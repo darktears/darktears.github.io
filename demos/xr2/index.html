@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebXR Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <style>
+      html, body {
+        padding: 0;
+        margin: 0;
+        user-select: none;
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+        touch-action: none;
+      }
+      #container {
+        height: 100%;
+        width: 100%;
+      }
+      .vr-toggle {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        background-image: url('vr-hmd.png');
+        background-repeat: no-repeat;
+        background-position: left center;
+        background-size: 30px 30px;
+        background-color: #44C1B7;
+        color: white;
+        padding: 12px 16px;
+        padding-left: 32px;
+        border-radius: 3px;
+        border: solid 1px black;
+        font-size: 14px;
+        font-weight: bold;
+        height: 50px;
+        width: 130px;
+      }
+      #start {
+        position: absolute;
+        top: 0px;
+        height: 100%;
+        width: 100%;
+        z-index: 100;
+        color: #FFF;
+        font-size: 50px;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #joystickControls {
+        display: none;
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.562);
+        border-radius: 75px;
+      }
+      #joystick {
+        display: block;
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        left: 25px;
+        bottom: 25px;
+        background: rgba(141, 140, 140, 0.562);
+        border-radius: 75px;
+        pointer-events: all;
+      }
+    </style>
+    <script src="node_modules/three/build/three.min.js"></script>
+    <script src="node_modules/three/examples/js/loaders/MTLLoader.js"></script>
+    <script src="node_modules/three/examples/js/loaders/OBJLoader.js"></script>
+    <script src="node_modules/three/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="node_modules/three/examples/js/controls/PointerLockControls.js"></script>
+    <script src="node_modules/webxr-polyfill/build/webxr-polyfill.min.js"></script>
+  </head>
+  <body>
+    <div id="start">Click to get started</div>
+    <div id="container"></div>
+    <div id="joystickControls">
+      <div id="joystick"></div>
+    </div>
+    <script src="demo.js"></script>
+  </body>
+</html>
