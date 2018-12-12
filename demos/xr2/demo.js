@@ -842,7 +842,8 @@ class Demo {
       return;
     }
 
-    let pointerMatrix = new THREE.Matrix4();
+    return;
+    /*let pointerMatrix = new THREE.Matrix4();
     pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
     let raycaster = new THREE.Raycaster();
     this._setupControllerRaycast(raycaster, pointerMatrix);
@@ -856,7 +857,7 @@ class Demo {
       // This is the new position for the user.
       this._userPosition.copy(position);
       break;
-    }
+    }*/
   }
 
   _handleSelectStart(inputSource, frame, frameOfRef) {
@@ -1066,7 +1067,16 @@ class Demo {
         let diffXRotation = new THREE.Quaternion(gripRotation.x / norm2, 0, 0, gripRotation.w / norm2);
         var eulerRotation = new THREE.Euler();
         eulerRotation.setFromQuaternion(diffXRotation);
-        this._gltfObject.position.z += eulerRotation.x / 10;
+        // Let's cap the movements from only -90 to 90.
+        if (eulerRotation.x > Math.PI / 2 || eulerRotation.x < -Math.PI / 2)
+          return;
+        let delta = eulerRotation.x / (Math.PI / 2);
+        let newZposition = this._gltfObject.position.z;
+        // Make the move a bit smoother.
+        newZposition += delta / 4;
+        // Let's keep it in bound so it doesn't disappear.
+        newZposition = Math.max(-6, Math.min(newZposition, -1.5));
+        this._gltfObject.position.z = newZposition;
     }
   }
 
