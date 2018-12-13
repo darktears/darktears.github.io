@@ -54,6 +54,8 @@ class Demo {
     this._touchControls = document.querySelector('#joystickControls');
     this._joystick = document.querySelector('#joystick');
 
+    this._backgroundColor = new THREE.Color(0x000000);
+
     this.clearContainer();
     this.createRenderer();
 
@@ -63,7 +65,6 @@ class Demo {
 
     this.createCamera();
     this.createScene();
-    this.createMeshes();
 
     this._addEventListeners();
     requestAnimationFrame(this._render);
@@ -84,6 +85,9 @@ class Demo {
     this._userPosition = new THREE.Vector3();
     this._userRotation = new THREE.Quaternion();
     this._movingDirection = Direction.Stopped;
+
+    this._animationMixers = [];
+    this._clock = new THREE.Clock();
   }
 
   _checkForXR() {
@@ -385,6 +389,7 @@ class Demo {
   createRenderer() {
     this._renderer = new THREE.WebGLRenderer({ antialias : true });
     this._renderer.shadowMap.enabled = true;
+    this._renderer.setPixelRatio( window.devicePixelRatio );
     this._container.appendChild(this._renderer.domElement);
   }
 
@@ -400,17 +405,33 @@ class Demo {
 
   createScene() {
     this._scene = new THREE.Scene();
+    this._scene.background = this._backgroundColor;
+
+    const urls = ['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png'];
+    let cubeMap = new THREE.CubeTextureLoader()
+      .setPath('./textures/cube/basic-light/')
+      .load(urls, _ => {
+        cubeMap.encoding = THREE.GammaEncoding;
+        var pmremGenerator = new THREE.PMREMGenerator(cubeMap);
+        pmremGenerator.update(this._renderer );
+        var pmremCubeUVPacker = new THREE.PMREMCubeUVPacker(pmremGenerator.cubeLods);
+        pmremCubeUVPacker.update(this._renderer);
+        this._cuberRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
+        pmremGenerator.dispose();
+        pmremCubeUVPacker.dispose();
+        this.createMeshes();
+      });
   }
 
   createMeshes() {
-    // Heart.
-    let loader = new THREE.GLTFLoader().setPath('.');
-    loader.load('heart.glb', (gltf) => {
-        this._addGLTFModel(gltf);
-        this._checkForXR();
-    }, function ( xhr ) {
-      console.log( ( xhr.loaded / xhr.total * 100 ) + '% of GLTF model loaded.' );
-    }, function ( error ) {
+    // Heart model
+    let loader = new THREE.GLTFLoader();
+    loader.load('models/gltf/heart/scene.gltf', (object) => {
+       this._addGLTFModel(object);
+       this._checkForXR();
+    }, function (xhr) {
+      console.log((xhr.loaded / xhr.total * 100 ) + '% of GLTF model loaded.' );
+    }, function (error) {
       console.log( 'An error happened while loading the GLTF model : ' + error);
     });
 
@@ -430,8 +451,7 @@ class Demo {
 
     let floorMaterial = [
       new THREE.MeshBasicMaterial({
-          wireframe: true,
-          side: THREE.FrontSide
+          color: 0x999999
       })
     ];
 
@@ -470,30 +490,92 @@ class Demo {
     this._floor.receiveShadow = true;
     this._scene.add(this._floor);
 
+    let grid = new THREE.GridHelper(20, 20, this._backgroundColor, this._backgroundColor);
+    grid.material.opacity = 0.2;
+    grid.material.transparent = true;
+    this._scene.add(grid);
+
     let roof = new THREE.Mesh(squareGeometry, roofMaterial);
     roof.position.z = -2;
     roof.position.y = 2.5;
     roof.rotation.x = -Math.PI / 2;
     this._scene.add(roof);
 
-    let ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const lightColor = 0x7C7C7C;
+    const lightIntensity = 5;
+
+    let ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this._scene.add(ambientLight);
+
+    let light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set( 0, 2, 1.5);
+    light.lookAt(0, 0.8, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
+
+    light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(0, -1, 2);
+    light.lookAt(0, 0.8, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
+
+    light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(-2, 2, 0);
+    light.lookAt(0, 0.8, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
+
+    light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(2, 2, 0);
+    light.lookAt(0, 0.8, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
+
+    // Right light.
+    light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(2, 0.8, 0);
+    light.lookAt(0, 1, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
+
+    // Left light.
+    light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(-2, 0.8, 0);
+    light.lookAt(0, 0.8, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
+
+    // Back light.
+    light = new THREE.DirectionalLight(lightColor, lightIntensity);
+    light.position.set(0, 0.8, -4);
+    light.lookAt(0, 0.8, -1.6)
+    light.castShadow = true;
+    this._scene.add(light);
   }
 
   _addGLTFModel(gltf) {
     this._gltfObject = gltf.scene;
     this._gltfObject.position.z = -1.6;
     this._gltfObject.position.y = 0.8;
-    this._gltfObject.scale.copy(new THREE.Vector3(2.7, 2.7, 2.7));
+    this._gltfObject.rotation.y = - Math.PI / 1.5;
+    this._gltfObject.scale.copy(new THREE.Vector3(0.1, 0.1, 0.1));
     this._gltfObject.name = 'heart';
-    this._scene.add(this._gltfObject);
 
-    this._test = this._gltfObject.clone();
-    this._test.position.z = -1.5;
-    this._test.position.y = 0;
-    this._test.position.x = -1.5;
-    this._test.scale.copy(new THREE.Vector3(1, 1, 1));
-    this._scene.add(this._test);
+    gltf.animations.forEach((clip) => {
+        let mixer = new THREE.AnimationMixer(this._gltfObject);
+        this._animationMixers.push(mixer);
+        mixer.clipAction(clip).play();
+    });
+    this._gltfObject.traverse(child => {
+      if (child.isMesh) {
+        child.material.metalness = 1;
+        child.material.roughness = 0;
+        child.material.receiveShadow = true;
+        child.material.envMap = this._cuberRenderTarget.texture;
+      }
+    });
+
+    this._scene.add(this._gltfObject);
   }
 
   _createPresentationButton() {
@@ -668,6 +750,14 @@ class Demo {
   }
 
   _render(timestamp, xrFrame) {
+    // Update the mixers for the 3D models animations.
+    if (this._animationMixers.length > 0) {
+      const delta = this._clock.getDelta();
+      for (let i = 0; i < this._animationMixers.length; i ++) {
+        this._animationMixers[i].update(delta);
+      }
+    }
+
     if (!this._xrSession) {
       // Ensure that we switch everything back to auto for non-VR mode.
       this._onResize();
