@@ -389,6 +389,8 @@ class Demo {
   createRenderer() {
     this._renderer = new THREE.WebGLRenderer({ antialias : true });
     this._renderer.shadowMap.enabled = true;
+    this._renderer.gammaInput = true;
+    this._renderer.gammaOutput = true;
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._container.appendChild(this._renderer.domElement);
   }
@@ -413,7 +415,7 @@ class Demo {
       .load(urls, _ => {
         cubeMap.encoding = THREE.GammaEncoding;
         var pmremGenerator = new THREE.PMREMGenerator(cubeMap);
-        pmremGenerator.update(this._renderer );
+        pmremGenerator.update(this._renderer);
         var pmremCubeUVPacker = new THREE.PMREMCubeUVPacker(pmremGenerator.cubeLods);
         pmremCubeUVPacker.update(this._renderer);
         this._cuberRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
@@ -501,11 +503,8 @@ class Demo {
     roof.rotation.x = -Math.PI / 2;
     this._scene.add(roof);
 
-    const lightColor = 0x7C7C7C;
-    const lightIntensity = 5;
-
-    let ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this._scene.add(ambientLight);
+    const lightColor = 0x7F7F7F;
+    const lightIntensity = 3;
 
     let light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set( 0, 2, 1.5);
@@ -569,7 +568,7 @@ class Demo {
     this._gltfObject.traverse(child => {
       if (child.isMesh) {
         child.material.metalness = 1;
-        child.material.roughness = 0;
+        child.material.roughness = 0.3;
         child.material.receiveShadow = true;
         child.material.envMap = this._cuberRenderTarget.texture;
       }
