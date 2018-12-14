@@ -407,7 +407,6 @@ class Demo {
 
   createScene() {
     this._scene = new THREE.Scene();
-    this._scene.background = this._backgroundColor;
 
     const urls = ['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png'];
     let cubeMap = new THREE.CubeTextureLoader()
@@ -509,46 +508,39 @@ class Demo {
     let light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set( 0, 2, 1.5);
     light.lookAt(0, 0.8, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
 
     light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(0, -1, 2);
     light.lookAt(0, 0.8, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
 
     light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(-2, 2, 0);
     light.lookAt(0, 0.8, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
 
     light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(2, 2, 0);
     light.lookAt(0, 0.8, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
 
     // Right light.
     light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(2, 0.8, 0);
     light.lookAt(0, 1, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
 
     // Left light.
     light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(-2, 0.8, 0);
     light.lookAt(0, 0.8, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
 
     // Back light.
     light = new THREE.DirectionalLight(lightColor, lightIntensity);
     light.position.set(0, 0.8, -4);
     light.lookAt(0, 0.8, -1.6)
-    light.castShadow = true;
     this._scene.add(light);
   }
 
@@ -657,7 +649,7 @@ class Demo {
       this._renderer.domElement.hidden = true;
       this._magicWindowCanvas.hidden = false;
       this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
-      this._userPosition.set(0, 0 ,0);
+      this._userPosition.set(0, 0, 0);
       this._userRotation.set(0, 0, 0, 1);
 
       this._showTouchControls();
