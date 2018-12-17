@@ -862,6 +862,7 @@ class Demo {
     }
     let pointerMatrix = new THREE.Matrix4();
     pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+    this._adjustMatrixWithTeleportation(pointerMatrix);
     let raycaster = new THREE.Raycaster();
     this._setupControllerRaycast(raycaster, pointerMatrix);
     let intersects = raycaster.intersectObject(this._floor);
@@ -877,24 +878,26 @@ class Demo {
     }
   }
 
-  _setupControllerRaycast(raycaster, pointerMatrix) {
-    // We should probably use XRay here but the
-    // origin and direction doesn't really work here.
-    let raycasterOrigin = new THREE.Vector3();
-    let raycasterDestination = new THREE.Vector3(0, 0, -1);
-    let pointerWorldMatrix = new THREE.Matrix4();
-    // If the user moved, we need to translate the controllers.
+  _adjustMatrixWithTeleportation(matrix) {
     let currentPosition = new THREE.Vector3(
       this._userPosition.x,
       this._userPosition.y,
       this._userPosition.z);
-    let pointerPosition = new THREE.Vector3();
-    pointerMatrix.decompose(pointerPosition, new THREE.Quaternion(), new THREE.Vector3());
-    currentPosition.add(pointerPosition);
-    pointerMatrix.setPosition(currentPosition);
-    pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
-    raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
-    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
+    let matrixPosition = new THREE.Vector3();
+    matrix.decompose(matrixPosition, new THREE.Quaternion(), new THREE.Vector3());
+    currentPosition.add(matrixPosition);
+    matrix.setPosition(currentPosition);
+  }
+
+  _setupControllerRaycast(raycaster, rayMatrix) {
+    // We should probably use XRay here but the
+    // origin and direction doesn't really work here.
+    let raycasterOrigin = new THREE.Vector3();
+    let raycasterDestination = new THREE.Vector3(0, 0, -1);
+    let rayMatrixWorld = new THREE.Matrix4();
+    rayMatrixWorld.multiplyMatrices(this._scene.matrixWorld, rayMatrix);
+    raycasterOrigin.setFromMatrixPosition(rayMatrixWorld);
+    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(rayMatrixWorld).normalize());
   }
 
   _updateInput(xrFrame) {
@@ -929,6 +932,7 @@ class Demo {
         let laserLength = 0;
         let pointerMatrix = new THREE.Matrix4();
         pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+        this._adjustMatrixWithTeleportation(pointerMatrix);
         let raycaster = new THREE.Raycaster();
         this._setupControllerRaycast(raycaster, pointerMatrix);
         let intersects = raycaster.intersectObjects(this._scene.children, true);
@@ -1016,14 +1020,7 @@ class Demo {
     grip.fromArray(gripMatrix);
     // We need to translate the controller mesh as well if the
     // user did teleport.
-    let currentPosition = new THREE.Vector3(
-      this._userPosition.x,
-      this._userPosition.y,
-      this._userPosition.z);
-    let gripPosition = new THREE.Vector3();
-    grip.decompose(gripPosition, new THREE.Quaternion(), new THREE.Vector3());
-    currentPosition.add(gripPosition);
-    grip.setPosition(currentPosition);
+    this._adjustMatrixWithTeleportation(grip);
     controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
   }
