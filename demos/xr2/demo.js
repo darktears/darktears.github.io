@@ -546,9 +546,10 @@ class Demo {
 
   _addGLTFModel(gltf) {
     this._gltfObject = gltf.scene;
-    this._gltfObject.position.z = -1.6;
+    this._gltfObject.position.z = -1.3;
     this._gltfObject.position.y = 0.8;
     this._gltfObject.rotation.y = - Math.PI / 1.5;
+    this._gltfObject.rotation.x = Math.PI / 10;
     this._gltfObject.scale.copy(new THREE.Vector3(0.1, 0.1, 0.1));
     this._gltfObject.name = 'heart';
 
