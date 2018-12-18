@@ -391,7 +391,6 @@ class Demo {
     this._renderer.shadowMap.enabled = true;
     this._renderer.gammaInput = true;
     this._renderer.gammaOutput = true;
-    this._renderer.setPixelRatio( window.devicePixelRatio );
     this._container.appendChild(this._renderer.domElement);
   }
 
