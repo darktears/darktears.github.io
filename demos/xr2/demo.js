@@ -493,6 +493,7 @@ class Demo {
     let grid = new THREE.GridHelper(20, 20, this._backgroundColor, this._backgroundColor);
     grid.material.opacity = 0.2;
     grid.material.transparent = true;
+    grid.name = "grid";
     this._scene.add(grid);
 
     let roof = new THREE.Mesh(squareGeometry, roofMaterial);
@@ -949,6 +950,7 @@ class Demo {
 
     let pointerMatrix = new THREE.Matrix4();
     pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+    this._adjustMatrixWithTeleportation(pointerMatrix);
     let raycaster = new THREE.Raycaster();
     this._setupControllerRaycast(raycaster, pointerMatrix);
     let intersects = raycaster.intersectObject(this._gltfObject, true);
@@ -957,18 +959,12 @@ class Demo {
       let gripRotation = new THREE.Quaternion();
       gripMatrix.fromArray(inputPose.gripMatrix);
       gripMatrix.decompose(new THREE.Vector3(), gripRotation, new THREE.Vector3());
-      this._heartDragged = {dragStartInvertedRotation : gripRotation.inverse()};
+      this._heartDragged = {dragStartInvertedRotation : gripRotation.inverse(), heartStartRotation : this._gltfObject.quaternion.clone()};
       break;
     }
   }
 
-  _setupControllerRaycast(raycaster, pointerMatrix) {
-    // We should probably use XRay here but the
-    // origin and direction doesn't really work here.
-    let raycasterOrigin = new THREE.Vector3();
-    let raycasterDestination = new THREE.Vector3(0, 0, -1);
-    let pointerWorldMatrix = new THREE.Matrix4();
-    // If the user moved, we need to translate the controllers.
+  _adjustMatrixWithTeleportation(matrix) {
     let currentPosition = new THREE.Vector3(
       this._userPosition.x,
       this._userPosition.y,
@@ -978,19 +974,27 @@ class Demo {
       this._userRotation.y,
       this._userRotation.z,
       this._userRotation.w);
-    let pointerPosition = new THREE.Vector3();
-    let pointerRotation = new THREE.Quaternion();
-    pointerMatrix.decompose(pointerPosition, pointerRotation, new THREE.Vector3());
-    currentPosition.add(pointerPosition);
-    currentRotation.inverse().multiply(pointerRotation);
+    let matrixPosition = new THREE.Vector3();
+    let matrixRotation = new THREE.Quaternion();
+    matrix.decompose(matrixPosition, matrixRotation, new THREE.Vector3());
+    currentRotation.inverse().multiply(matrixRotation);
     let rotationMatrix = new THREE.Matrix4();
     rotationMatrix.makeRotationFromQuaternion(currentRotation);
-    pointerMatrix.identity();
-    pointerMatrix.setPosition(currentPosition);
-    pointerMatrix.multiply(rotationMatrix);
-    pointerWorldMatrix.multiplyMatrices(this._scene.matrixWorld, pointerMatrix);
-    raycasterOrigin.setFromMatrixPosition(pointerWorldMatrix);
-    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(pointerWorldMatrix).normalize());
+    currentPosition.add(matrixPosition);
+    matrix.identity();
+    matrix.setPosition(currentPosition);
+    matrix.multiply(rotationMatrix);
+  }
+
+  _setupControllerRaycast(raycaster, rayMatrix) {
+    // We should probably use XRay here but the
+    // origin and direction doesn't really work here.
+    let raycasterOrigin = new THREE.Vector3();
+    let raycasterDestination = new THREE.Vector3(0, 0, -1);
+    let rayMatrixWorld = new THREE.Matrix4();
+    rayMatrixWorld.multiplyMatrices(this._scene.matrixWorld, rayMatrix);
+    raycasterOrigin.setFromMatrixPosition(rayMatrixWorld);
+    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(rayMatrixWorld).normalize());
   }
 
   _updateInput(xrFrame) {
@@ -1001,7 +1005,6 @@ class Demo {
 
       if (!inputPose)
         continue;
-
 
       if (inputPose.gripMatrix)
         this._drawController(inputPose.gripMatrix);
@@ -1027,31 +1030,27 @@ class Demo {
         let laserLength = 0;
         let pointerMatrix = new THREE.Matrix4();
         pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
+        this._adjustMatrixWithTeleportation(pointerMatrix);
         let raycaster = new THREE.Raycaster();
         this._setupControllerRaycast(raycaster, pointerMatrix);
         let intersects = raycaster.intersectObjects(this._scene.children, true);
 
         for (let intersect of intersects) {
-          if (intersect.object.name === 'laser' || intersect.object.name === 'cursor' || intersect.object.name === 'body')
+          if (intersect.object.name === 'laser' || intersect.object.name === 'cursor' || intersect.object.name === 'body' || intersect.object.name === 'grid')
             continue;
 
           laserLength = -intersect.distance + 0.1;
           let laser = this._getActiveLaser(color);
-          if (intersect.object.name == 'floor') {
-            if (inputSource.targetRayMode == 'tracked-pointer')
-              this._drawTeleporter(laser, laserLength, pointerMatrix, cursor);
-          } else {
-            if (intersect.object.name === 'node_id30')
-              intersected = true;
-            // Tracked pointer means it's a controller (not originating from the
-            // head), we can draw a laser.
-            if (inputSource.targetRayMode == 'tracked-pointer')
-              this._drawStraightLaser(laser, laserLength, pointerMatrix, cursor);
-            pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, laserLength));
-            let position = new THREE.Vector3();
-            pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
-            cursor.position.copy(position);
-          }
+          if (intersect.object.name === 'node_id30')
+            intersected = true;
+          // Tracked pointer means it's a controller (not originating from the
+          // head), we can draw a laser.
+          if (inputSource.targetRayMode == 'tracked-pointer')
+            this._drawStraightLaser(laser, laserLength, pointerMatrix, cursor);
+          pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, laserLength));
+          let position = new THREE.Vector3();
+          pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+          cursor.position.copy(position);
           // This will make sure the cursor is parrallel to the intersect
           // object, it feels nice to me.
           cursor.rotation.set(intersect.object.rotation.x, intersect.object.rotation.y, intersect.object.rotation.z);
@@ -1112,36 +1111,19 @@ class Demo {
     controller.matrixAutoUpdate = false;
     let grip = new THREE.Matrix4();
     grip.fromArray(gripMatrix);
-    // We need to translate the controller mesh as well if the
-    // user did teleport.
-    let currentPosition = new THREE.Vector3(
-      this._userPosition.x,
-      this._userPosition.y,
-      this._userPosition.z);
-    let currentRotation = new THREE.Quaternion(
-        this._userRotation.x,
-        this._userRotation.y,
-        this._userRotation.z,
-        this._userRotation.w);
-    let gripPosition = new THREE.Vector3();
-    let gripRotation = new THREE.Quaternion();
-    grip.decompose(gripPosition, gripRotation, new THREE.Vector3());
-    currentPosition.add(gripPosition);
-    currentRotation.inverse().multiply(gripRotation);
-    let rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeRotationFromQuaternion(currentRotation);
-    grip.identity();
-    grip.setPosition(currentPosition);
-    grip.multiply(rotationMatrix);
+    this._adjustMatrixWithTeleportation(grip);
     controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
-
     if(this._heartDragged) {
-        gripRotation.multiply(this._heartDragged.dragStartInvertedRotation)
+        let gripRotation = new THREE.Quaternion();
+        grip.decompose(new THREE.Vector3(), gripRotation, new THREE.Vector3());
+        gripRotation.multiply(this._heartDragged.dragStartInvertedRotation);
         // We only care of the rotation around the Y axis to rotate the model.
         let norm = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.y * gripRotation.y);
         let diffYRotation = new THREE.Quaternion(0, gripRotation.y / norm, 0, gripRotation.w / norm);
-        this._gltfObject.setRotationFromQuaternion(diffYRotation.inverse());
+        let finalRotation = this._heartDragged.heartStartRotation.clone();
+        finalRotation.multiply(diffYRotation.inverse());
+        this._gltfObject.setRotationFromQuaternion(finalRotation);
 
         let norm2 = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.x * gripRotation.x);
         let diffXRotation = new THREE.Quaternion(gripRotation.x / norm2, 0, 0, gripRotation.w / norm2);
@@ -1155,7 +1137,7 @@ class Demo {
         // Make the move a bit smoother.
         newZposition += delta / 4;
         // Let's keep it in bound so it doesn't disappear.
-        newZposition = Math.max(-6, Math.min(newZposition, -1.5));
+        newZposition = Math.max(-6, Math.min(newZposition, 0));
         this._gltfObject.position.z = newZposition;
     }
   }
