@@ -28,6 +28,12 @@ const Direction = {
   Backward: 8
 }
 
+const DragState = {
+  NotDragging: 0,
+  Rotate: 1,
+  Move: 2
+}
+
 class Demo {
 
   static get CAMERA_SETTINGS() {
@@ -674,6 +680,7 @@ class Demo {
       this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
       document.addEventListener('keyup', event => { this._onKeyUpImmersive(event) }, false );
+      this._heartDragged = {dragState : DragState.NotDragging};
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
@@ -920,8 +927,13 @@ class Demo {
     }
 
     if(this._heartDragged) {
-      this._heartDragged = undefined;
-      return;
+      if (this._heartDragged.dragState === DragState.NotDragging) {
+        this._heartDragged = { dragState : DragState.Rotate };
+      } else if (this._heartDragged.dragState === DragState.Rotate) {
+        this._heartDragged = { dragState : DragState.Move };
+      } else if (this._heartDragged.dragState == DragState.Move) {
+        this._heartDragged = { dragState : DragState.NotDragging };
+      }
     }
 
     return;
@@ -949,6 +961,9 @@ class Demo {
       return;
     }
 
+    if (this._heartDragged.dragState === DragState.NotDragging)
+      return;
+
     let pointerMatrix = new THREE.Matrix4();
     pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
     this._adjustMatrixWithTeleportation(pointerMatrix);
@@ -960,7 +975,7 @@ class Demo {
       let gripRotation = new THREE.Quaternion();
       gripMatrix.fromArray(inputPose.gripMatrix);
       gripMatrix.decompose(new THREE.Vector3(), gripRotation, new THREE.Vector3());
-      this._heartDragged = {dragStartInvertedRotation : gripRotation.inverse(), heartStartRotation : this._gltfObject.quaternion.clone()};
+      this._heartDragged = {dragState : this._heartDragged.dragState, dragStartInvertedRotation : gripRotation.inverse(), heartStartRotation : this._gltfObject.quaternion.clone()};
       break;
     }
   }
@@ -1115,31 +1130,35 @@ class Demo {
     this._adjustMatrixWithTeleportation(grip);
     controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
-    if(this._heartDragged) {
+    if(this._heartDragged.dragState != DragState.NotDragging && this._heartDragged.dragStartInvertedRotation) {
         let gripRotation = new THREE.Quaternion();
         grip.decompose(new THREE.Vector3(), gripRotation, new THREE.Vector3());
         gripRotation.multiply(this._heartDragged.dragStartInvertedRotation);
-        // We only care of the rotation around the Y axis to rotate the model.
-        let norm = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.y * gripRotation.y);
-        let diffYRotation = new THREE.Quaternion(0, gripRotation.y / norm, 0, gripRotation.w / norm);
-        let finalRotation = this._heartDragged.heartStartRotation.clone();
-        finalRotation.multiply(diffYRotation.inverse());
-        this._gltfObject.setRotationFromQuaternion(finalRotation);
+        if (this._heartDragged.dragState === DragState.Rotate) {
+          // We only care of the rotation around the Y axis to rotate the model.
+          let norm = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.y * gripRotation.y);
+          let diffYRotation = new THREE.Quaternion(0, gripRotation.y / norm, 0, gripRotation.w / norm);
+          let finalRotation = this._heartDragged.heartStartRotation.clone();
+          finalRotation.multiply(diffYRotation.inverse());
+          this._gltfObject.setRotationFromQuaternion(finalRotation);
+        }
 
-        let norm2 = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.x * gripRotation.x);
-        let diffXRotation = new THREE.Quaternion(gripRotation.x / norm2, 0, 0, gripRotation.w / norm2);
-        var eulerRotation = new THREE.Euler();
-        eulerRotation.setFromQuaternion(diffXRotation);
-        // Let's cap the movements from only -90 to 90.
-        if (eulerRotation.x > Math.PI / 2 || eulerRotation.x < -Math.PI / 2)
-          return;
-        let delta = eulerRotation.x / (Math.PI / 2);
-        let newZposition = this._gltfObject.position.z;
-        // Make the move a bit smoother.
-        newZposition += delta / 4;
-        // Let's keep it in bound so it doesn't disappear.
-        newZposition = Math.max(-6, Math.min(newZposition, 0));
-        this._gltfObject.position.z = newZposition;
+        if (this._heartDragged.dragState === DragState.Move) {
+          let norm2 = Math.sqrt(gripRotation.w * gripRotation.w + gripRotation.x * gripRotation.x);
+          let diffXRotation = new THREE.Quaternion(gripRotation.x / norm2, 0, 0, gripRotation.w / norm2);
+          var eulerRotation = new THREE.Euler();
+          eulerRotation.setFromQuaternion(diffXRotation);
+          // Let's cap the movements from only -90 to 90.
+          if (eulerRotation.x > Math.PI / 2 || eulerRotation.x < -Math.PI / 2)
+            return;
+          let delta = eulerRotation.x / (Math.PI / 2);
+          let newZposition = this._gltfObject.position.z;
+          // Make the move a bit smoother.
+          newZposition += delta / 4;
+          // Let's keep it in bound so it doesn't disappear.
+          newZposition = Math.max(-6, Math.min(newZposition, 0));
+          this._gltfObject.position.z = newZposition;
+        }
     }
   }
 
