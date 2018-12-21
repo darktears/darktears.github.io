@@ -29,9 +29,8 @@ const Direction = {
 }
 
 const DragState = {
-  NotDragging: 0,
-  Rotate: 1,
-  Move: 2
+  Rotate: 0,
+  Move: 1
 }
 
 class Demo {
@@ -680,7 +679,7 @@ class Demo {
       this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
       document.addEventListener('keyup', event => { this._onKeyUpImmersive(event) }, false );
-      this._heartDragged = {dragState : DragState.NotDragging};
+      this._heartDragged = {dragState : DragState.Rotate};
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
@@ -927,12 +926,10 @@ class Demo {
     }
 
     if(this._heartDragged) {
-      if (this._heartDragged.dragState === DragState.NotDragging) {
-        this._heartDragged = { dragState : DragState.Rotate };
-      } else if (this._heartDragged.dragState === DragState.Rotate) {
+      if (this._heartDragged.dragState === DragState.Rotate) {
         this._heartDragged = { dragState : DragState.Move };
       } else if (this._heartDragged.dragState == DragState.Move) {
-        this._heartDragged = { dragState : DragState.NotDragging };
+        this._heartDragged = { dragState : DragState.Rotate };
       }
     }
 
@@ -1130,7 +1127,7 @@ class Demo {
     this._adjustMatrixWithTeleportation(grip);
     controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
-    if(this._heartDragged.dragState != DragState.NotDragging && this._heartDragged.dragStartInvertedRotation) {
+    if(this._heartDragged.dragStartInvertedRotation) {
         let gripRotation = new THREE.Quaternion();
         grip.decompose(new THREE.Vector3(), gripRotation, new THREE.Vector3());
         gripRotation.multiply(this._heartDragged.dragStartInvertedRotation);
