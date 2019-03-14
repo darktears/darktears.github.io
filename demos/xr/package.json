@@ -17,7 +17,7 @@
   "author": "Alexis Menard",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "three": "^0.97.0",
-    "webxr-polyfill": "^1.0.6"
+    "three": "^0.102.0",
+    "webxr-polyfill": "^1.0.13"
   }
 }
