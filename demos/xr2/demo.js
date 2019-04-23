@@ -18,7 +18,7 @@
 
 'use strict';
 
-var polyfill = new WebXRPolyfill();
+//var polyfill = new WebXRPolyfill();
 
 const Direction = {
   Stopped: 0,
@@ -74,9 +74,8 @@ class Demo {
     this._addEventListeners();
     requestAnimationFrame(this._render);
 
-    this._xrDevice;
     this._xrSession;
-    this._xrFrameOfRef;
+    this._xrReferenceSpace;
     this._magicWindowCanvas;
     this._activeControllers = 0;
     this._controllers = [];
@@ -86,29 +85,12 @@ class Demo {
     this._cursors = [];
     this._activeCursors = 0;
     this._prevTime = performance.now();
-    this._velocity = new THREE.Vector3();
     this._userPosition = new THREE.Vector3();
-    this._userRotation = new THREE.Quaternion();
+    this._velocity = new THREE.Vector3();
     this._movingDirection = Direction.Stopped;
 
     this._animationMixers = [];
     this._clock = new THREE.Clock();
-  }
-
-  _checkForXR() {
-    navigator.xr.requestDevice().then(device => {
-      this._onXRAvailable(device);
-    }, err => {
-      // Let's provide a mouse/keyboard based interaction.
-      this._enableKeyboardMouse();
-      if (err.message === 'NotFoundError') {
-        // No XRDevices available.
-        console.error('No XR devices available :', err);
-      } else {
-        // An error occurred while requesting an XRDevice.
-        console.error('Requesting XR device failed :', err);
-      }
-    });
   }
 
   _enableKeyboardMouse() {
@@ -172,23 +154,6 @@ class Demo {
       case 39: // right
       case 68: // d
         this._movingDirection &= ~Direction.Right;
-        break;
-    }
-  }
-
-  _onKeyUpImmersive(event) {
-    switch(event.keyCode) {
-      case 37: // left
-      case 65: { // a
-          let rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3( 0, 1, 0 ), -Math.PI/6);
-          this._userRotation.multiply(rotation);
-        }
-        break;
-      case 39: // right
-      case 68: { // d
-          let rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3( 0, 1, 0 ), Math.PI/6);
-          this._userRotation.multiply(rotation);
-        }
         break;
     }
   }
@@ -309,26 +274,30 @@ class Demo {
     this._magicWindowCanvas = document.createElement("canvas");
     let magicWindowContext = this._magicWindowCanvas.getContext('xrpresent');
     // Check to see if the UA can support a non-immersive sessions with the given output context.
-    return this._xrDevice.supportsSession({ outputContext: magicWindowContext })
+    return navigator.xr.supportsSessionMode('inline')
         .then(() => {
           this._activateMagicWindow(magicWindowContext);
           this._magicWindowCanvas.width = this._width;
           this._magicWindowCanvas.height = this._height;
           this._container.appendChild(this._magicWindowCanvas);
         })
-        .catch((reason) => { console.log("Magic Window content is not supported: " + reason); });
+        .catch((reason) => { console.log("Inline content is not supported: " + reason); });
   }
 
-  _onXRAvailable(device) {
-    this._xrDevice = device;
+  _checkForXR() {
+    if (navigator.xr === undefined) {
+      this._enableKeyboardMouse();
+      console.log("WebXR Device API is not supported in this browser");
+      return;
+    }
     this._hideStartMessage();
     this._loadViveMeshes();
     this._loadDaydreamMeshes();
-    this._xrDevice.supportsSession({ immersive: true }).then(() => {
+    navigator.xr.supportsSessionMode('immersive-vr').then(() => {
       this._createPresentationButton();
-      this._checkMagicWindowSupport();
+      //this._checkMagicWindowSupport();
     }).catch((err) => {
-      console.log("VR not supported: " + err);
+      console.log("VR Immersive not supported: " + err);
     });
   }
 
@@ -593,17 +562,13 @@ class Demo {
     if (this._renderer.domElement.hidden && this._xrSession) {
       await this._xrSession.end();
       this._xrSession = null;
-      this._xrFrameOfRef = null;
+      this._xrReferenceSpace = null;
     }
 
     return this._activateVR();
   }
 
   async _deactivateVR() {
-    if (!this._xrDevice) {
-      return;
-    }
-
     if (!this._xrSession) {
       return;
     }
@@ -613,7 +578,7 @@ class Demo {
 
   async _onSessionEnded() {
     this._xrSession = null;
-    this._xrFrameOfRef = null;
+    this._xrReferenceSpace = null;
     this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
     this._activeControllers = 0;
     for (let controller of this._controllers) {
@@ -630,7 +595,6 @@ class Demo {
       this._scene.remove(cursor);
     }
     this._cursors = [];
-    document.removeEventListener('keyup', event => { this._onKeyUpImmersive(event) }, false );
     requestAnimationFrame(this._render);
     if (this._magicWindowCanvas)
       this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
@@ -642,21 +606,23 @@ class Demo {
     }
 
     try {
-      this._xrSession = await this._xrDevice.requestSession({ outputContext: ctx });
+      this._xrSession = await navigator.xr.requestSession('inline');
+
+      await this._xrSession.updateRenderState({ outputContext: ctx });
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
 
       // Reference frame for VR: stage vs headModel.
-      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("eye-level");
+      this._xrReferenceSpace = await this._xrSession.requestReferenceSpace({ type:'stationary', subtype:'eye-level' });
 
       // Create the WebGL layer.
-      await this._renderer.vr.setDevice(this._xrDevice);
+      await this._renderer.context.makeXRCompatible();
       this._renderer.domElement.hidden = true;
       this._magicWindowCanvas.hidden = false;
-      this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      let layer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      this._xrSession.updateRenderState({ baseLayer: layer });
       this._userPosition.set(0, 0, 0);
-      this._userRotation.set(0, 0, 0, 1);
 
       this._showTouchControls();
 
@@ -669,38 +635,34 @@ class Demo {
   }
 
   async _activateVR() {
-    if (!this._xrDevice) {
-      return;
-    }
-
     try {
       // ‘Immersive’ means rendering into the HMD.
-      this._xrSession = await this._xrDevice.requestSession({ immersive: true });
+      this._xrSession = await navigator.xr.requestSession('immersive-vr');
       this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
-      document.addEventListener('keyup', event => { this._onKeyUpImmersive(event) }, false );
       this._heartDragged = {dragState : DragState.Rotate};
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
 
       // Reference frame for VR: stage vs headModel.
-      this._xrFrameOfRef = await this._xrSession.requestFrameOfReference("stage");
+      this._xrReferenceSpace = await this._xrSession.requestReferenceSpace({ type:'stationary', subtype:'floor-level' });
       this._xrSession.addEventListener('select', (ev) => {
-          this._handleSelect(ev.inputSource, ev.frame, this._xrFrameOfRef);
+          this._handleSelect(ev.inputSource, ev.frame, this._xrReferenceSpace);
       });
       this._xrSession.addEventListener('selectstart', (ev) => {
-          this._handleSelectStart(ev.inputSource, ev.frame, this._xrFrameOfRef);
+          this._handleSelectStart(ev.inputSource, ev.frame, this._xrReferenceSpace);
       });
 
       // Create the WebGL layer.
-      await this._renderer.vr.setDevice(this._xrDevice);
+      await this._renderer.context.makeXRCompatible();
       this._renderer.domElement.hidden = false;
       if (this._magicWindowCanvas) {
         this._magicWindowCanvas.hidden = true;
         this._hideTouchControls();
       }
-      this._xrSession.baseLayer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      let layer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      this._xrSession.updateRenderState({ baseLayer: layer });
 
       // Enter the rendering loop.
       this._xrSession.requestAnimationFrame(this._render);
@@ -783,51 +745,43 @@ class Demo {
     this._renderer.clear();
 
     // Get pose data.
-    let pose = xrFrame.getDevicePose(this._xrFrameOfRef);
-    if (!pose)
-      return;
+    let pose = xrFrame.getViewerPose(this._xrReferenceSpace);
+    if (pose) {
+      let xrLayer = this._xrSession.renderState.baseLayer;
 
-    let xrLayer = this._xrSession.baseLayer;
+      this._renderer.setSize(xrLayer.framebufferWidth, xrLayer.framebufferHeight, false);
 
-    this._renderer.setSize(xrLayer.framebufferWidth, xrLayer.framebufferHeight, false);
+      this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, xrLayer.framebuffer);
 
-    this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, xrLayer.framebuffer);
+      this._updateInput(xrFrame);
 
-    this._updateInput(xrFrame);
-
-    for (let view of xrFrame.views) {
-      let viewport = xrLayer.getViewport(view);
-      this._renderEye(
-        pose.getViewMatrix(view),
-        view.projectionMatrix,
-        viewport);
+      for (let xrView of pose.views) {
+        let viewport = xrLayer.getViewport(xrView);
+        this._renderEye(
+          xrView,
+          viewport);
+      }
     }
-
     // Use the VR display's in-built rAF (which can be a diff refresh rate to
     // the default browser one).
     this._xrSession.requestAnimationFrame(this._render);
   }
 
-  _renderEye(viewMatrixArray, projectionMatrix, viewport) {
+  _renderEye(xrView, viewport) {
     // Set the left or right eye half.
     this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
     let viewMatrix = new THREE.Matrix4();
-    viewMatrix.fromArray(viewMatrixArray);
+    viewMatrix.fromArray(xrView.transform.inverse.matrix);
 
     if (this._magicWindowCanvas && this._magicWindowCanvas.hidden === false) {
       // This will adjust the position of the user depending if
       // the keypad was pressed.
       this._updateMagicWindowPosition(viewMatrix);
-      this._translateAndRotateViewMatrix(viewMatrix, this._userPosition, new THREE.Quaternion);
-    } else {
-      // We need to adjust the view matrix if the user was teleported.
-      let invertedTeleportTranslation = new THREE.Vector3();
-      invertedTeleportTranslation.copy(this._userPosition).negate();
-      this._translateAndRotateViewMatrix(viewMatrix, invertedTeleportTranslation, this._userRotation);
     }
+
     // Update the scene and camera matrices.
-    this._camera.projectionMatrix.fromArray(projectionMatrix);
+    this._camera.projectionMatrix.fromArray(xrView.projectionMatrix);
     this._camera.matrixWorldInverse.copy(viewMatrix);
     this._scene.matrix.copy(viewMatrix);
 
@@ -888,42 +842,11 @@ class Demo {
     this._prevTime = time;
   }
 
-  _translateAndRotateViewMatrix(viewMatrix, position, rotation) {
-    // Let's save the current position before working on it.
-    let positionInView = new THREE.Vector3(
-      position.x,
-      position.y,
-      position.z
-    );
-    let viewMatrixWithoutTranslation = new THREE.Matrix4();
-    viewMatrixWithoutTranslation.copy(viewMatrix);
-    // The reason we do this here is because the view matrix may have
-    // a position set, for example in a 6DoF system or on a 3 DoF
-    // system where the height is emulated. What we want to do here is
-    // to apply the view matrix on our user position.
-    viewMatrixWithoutTranslation.setPosition(new THREE.Vector3());
-    // The result below gives us the position after the rotation of the
-    // view has been applied. This will make the direction right.
-    positionInView.applyMatrix4(viewMatrixWithoutTranslation);
-    let translationInViewMatrix = new THREE.Matrix4();
-    // Let's build a translation matrix out of rotated position. We don't need to
-    // care about the rotation because we're going to apply that translation
-    // on the view matrix (which is rotated and translated).
-    translationInViewMatrix.makeTranslation(positionInView.x, positionInView.y, positionInView.z);
-    let rotationInViewMatrix = new THREE.Matrix4();
-    rotationInViewMatrix.makeRotationFromQuaternion(rotation);
-    // pre-multiply because we want to translate before rotating. Otherwise we
-    // may end up with a wrong position.
-    viewMatrix.premultiply(translationInViewMatrix);
-    viewMatrix.premultiply(rotationInViewMatrix);
-  }
+  _handleSelect(inputSource, frame, referenceSpace) {
+    let rayPose = frame.getPose(inputSource.targetRaySpace, referenceSpace);
 
-  _handleSelect(inputSource, frame, frameOfRef) {
-    let inputPose = frame.getInputPose(inputSource, frameOfRef);
-
-    if (!inputPose) {
+    if (!rayPose)
       return;
-    }
 
     if(this._heartDragged) {
       if (this._heartDragged.dragState === DragState.Rotate) {
@@ -934,69 +857,30 @@ class Demo {
     }
 
     return;
-    /*let pointerMatrix = new THREE.Matrix4();
-    pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
-    let raycaster = new THREE.Raycaster();
-    this._setupControllerRaycast(raycaster, pointerMatrix);
-    let intersects = raycaster.intersectObject(this._floor);
-    for (let intersect of intersects) {
-      let position = new THREE.Vector3();
-      pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -intersect.distance));
-      pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
-      // We never move in the y direction in this demo.
-      position.y = 0;
-      // This is the new position for the user.
-      this._userPosition.copy(position);
-      break;
-    }*/
   }
 
-  _handleSelectStart(inputSource, frame, frameOfRef) {
-    let inputPose = frame.getInputPose(inputSource, frameOfRef);
+  _handleSelectStart(inputSource, frame, referenceSpace) {
+    let gripPose = frame.getPose(inputSource.gripSpace, referenceSpace);
 
-    if (!inputPose) {
+    if (!gripPose)
       return;
-    }
 
     if (this._heartDragged.dragState === DragState.NotDragging)
       return;
 
     let pointerMatrix = new THREE.Matrix4();
-    pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
-    this._adjustMatrixWithTeleportation(pointerMatrix);
+    pointerMatrix.fromArray(gripPose.transform.matrix);
     let raycaster = new THREE.Raycaster();
     this._setupControllerRaycast(raycaster, pointerMatrix);
     let intersects = raycaster.intersectObject(this._gltfObject, true);
     for (let intersect of intersects) {
       let gripMatrix = new THREE.Matrix4();
       let gripRotation = new THREE.Quaternion();
-      gripMatrix.fromArray(inputPose.gripMatrix);
+      gripMatrix.fromArray(gripPose.transform.matrix);
       gripMatrix.decompose(new THREE.Vector3(), gripRotation, new THREE.Vector3());
       this._heartDragged = {dragState : this._heartDragged.dragState, dragStartInvertedRotation : gripRotation.inverse(), heartStartRotation : this._gltfObject.quaternion.clone()};
       break;
     }
-  }
-
-  _adjustMatrixWithTeleportation(matrix) {
-    let currentPosition = new THREE.Vector3(
-      this._userPosition.x,
-      this._userPosition.y,
-      this._userPosition.z);
-    let currentRotation = new THREE.Quaternion(
-      this._userRotation.x,
-      this._userRotation.y,
-      this._userRotation.z,
-      this._userRotation.w);
-    let matrixPosition = new THREE.Vector3();
-    let matrixRotation = new THREE.Quaternion();
-    matrix.decompose(matrixPosition, matrixRotation, new THREE.Vector3());
-    currentRotation.inverse().multiply(matrixRotation);
-    let rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeRotationFromQuaternion(currentRotation);
-    currentPosition.add(matrixPosition);
-    matrix.identity();
-    matrix.setPosition(currentPosition);
-    matrix.multiply(rotationMatrix);
   }
 
   _setupControllerRaycast(raycaster, rayMatrix) {
@@ -1014,16 +898,13 @@ class Demo {
     let inputSources = this._xrSession.getInputSources();
     let intersected = false;
     for (let inputSource of inputSources) {
-      let inputPose = xrFrame.getInputPose(inputSource, this._xrFrameOfRef);
-
-      if (!inputPose)
-        continue;
-
-      if (inputPose.gripMatrix)
-        this._drawController(inputPose.gripMatrix);
+      let gripPose = xrFrame.getPose(inputSource.gripSpace, this._xrReferenceSpace);
+      if (gripPose)
+        this._drawController(gripPose.transform.matrix);
 
 
-      if (inputPose.targetRay) {
+      let rayPose = xrFrame.getPose(inputSource.targetRaySpace, this._xrReferenceSpace);
+      if (rayPose) {
         let color = this._getRandomColor();
         let cursor = null;
 
@@ -1042,8 +923,7 @@ class Demo {
 
         let laserLength = 0;
         let pointerMatrix = new THREE.Matrix4();
-        pointerMatrix.fromArray(inputPose.targetRay.transformMatrix);
-        this._adjustMatrixWithTeleportation(pointerMatrix);
+        pointerMatrix.fromArray(rayPose.transform.matrix);
         let raycaster = new THREE.Raycaster();
         this._setupControllerRaycast(raycaster, pointerMatrix);
         let intersects = raycaster.intersectObjects(this._scene.children, true);
@@ -1124,7 +1004,6 @@ class Demo {
     controller.matrixAutoUpdate = false;
     let grip = new THREE.Matrix4();
     grip.fromArray(gripMatrix);
-    this._adjustMatrixWithTeleportation(grip);
     controller.matrix.copy(grip);
     controller.updateMatrixWorld(true);
     if(this._heartDragged.dragStartInvertedRotation) {
