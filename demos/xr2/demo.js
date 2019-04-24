@@ -1058,57 +1058,6 @@ class Demo {
     cursor.geometry = geometry;
   }
 
-  _drawTeleporter(laser, length, pointerMatrix, cursor) {
-    if (!laser)
-      return;
-
-    const drawCurve = false;
-    if (drawCurve) {
-      // 50 points to draw a curve is visually appealing.
-      const numberOfPoints = 50;
-      // Each points have 3 coordinates (x, y, z).
-      let vertices = new Float32Array(numberOfPoints * 3);
-      let x = 0;
-      let y = 0;
-      let z = 0;
-      let index = 0;
-      const gravity = 9.8;
-      // We're shooting up and in -z (front), x is not affected.
-      let direction = new THREE.Vector3(0, 1, -1);
-      direction.multiplyScalar(5);
-      for ( var i = 0, l = numberOfPoints; i < l; i ++ ) {
-        vertices[index++] = x;
-        vertices[index++] = y;
-        vertices[index++] = z;
-        let t = i / numberOfPoints;
-        // We use the following formula to calculate the motion
-        // of a projectile : x = Vx * t + 1/2 * g * t *t
-        y = direction.y * t + 0.5 * -gravity * t * t;
-        z = direction.z * t;
-      }
-
-      laser.geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-      laser.geometry.attributes.position.array = vertices;
-      laser.geometry.verticesNeedUpdate = true;
-      this._activeLasers = this._activeLasers + 1;
-      laser.visible = true;
-      laser.matrixAutoUpdate = false;
-      laser.matrix.copy(pointerMatrix);
-      laser.updateMatrixWorld(true);
-    } else {
-      this._drawStraightLaser(laser, length, pointerMatrix, cursor);
-    }
-
-    let position = new THREE.Vector3();
-    pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, length));
-    pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
-    let geometry = new THREE.TorusGeometry(0.3, 0.02, 30, 32, 6.29);
-    cursor.geometry.dispose();
-    cursor.geometry = geometry;
-    cursor.geometry.verticesNeedUpdate = true;
-    cursor.position.copy(position);
-  }
-
   _getRandomColor() {
     let letters = '0123456789ABCDEF';
     let color = '#';
