@@ -1,0 +1,60 @@
+body {
+    color: #cccccc;
+    font-family: Monospace;
+    font-size: 13px;
+    text-align: center;
+    background-color: #050505;
+    margin: 0px;
+    overflow: hidden;
+}
+
+#info {
+    position: absolute;
+    top: 0px;
+    width: 100%;
+    padding: 5px;
+}
+
+#description {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    padding: 5px;
+}
+
+.float {
+    float: left;
+    top: 10px;
+}
+
+a {
+    color: #0080ff;
+}
+
+.vr-toggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    background: #44C1B7;
+    color: #FFF;
+    padding: 12px 16px;
+    border-radius: 3px;
+    border: none;
+    font-size: 14px;
+}
+
+.video-button {
+    position: fixed;
+    top: 16px;
+    left: 116px;
+    background: #44C1B7;
+    color: #FFF;
+    padding: 12px 16px;
+    border-radius: 3px;
+    border: none;
+    font-size: 14px;
+}
+
+#video {
+    display: none;
+}
