@@ -274,7 +274,7 @@ class Demo {
     this._magicWindowCanvas = document.createElement("canvas");
     let magicWindowContext = this._magicWindowCanvas.getContext('xrpresent');
     // Check to see if the UA can support a non-immersive sessions with the given output context.
-    return navigator.xr.supportsSessionMode('inline')
+    return navigator.xr.supportsSession('inline')
         .then(() => {
           this._activateMagicWindow(magicWindowContext);
           this._magicWindowCanvas.width = this._width;
@@ -293,7 +293,7 @@ class Demo {
     this._hideStartMessage();
     this._loadViveMeshes();
     this._loadDaydreamMeshes();
-    navigator.xr.supportsSessionMode('immersive-vr').then(() => {
+    navigator.xr.supportsSession('immersive-vr').then(() => {
       this._createPresentationButton();
       //this._checkMagicWindowSupport();
     }).catch((err) => {

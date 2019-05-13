@@ -68,7 +68,7 @@ class WebXR {
   }
 
   checkXRSupport() {
-    navigator.xr.supportsSessionMode('immersive-vr')
+    navigator.xr.supportsSession('immersive-vr')
     .then(() => { this.createPresentationButton(); })
     .catch((err) => { console.log("Immersive XR not supported: " + err); });
   }
