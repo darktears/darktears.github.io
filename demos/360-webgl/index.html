@@ -72,7 +72,7 @@ found in the LICENSE file.
       vec2 homogeneouseUv = (vUv * 2.) - 1.;
       // Get UV on the EAC projection
       vec2 eacUv = (INV_PI_2 * atan(homogeneouseUv)) + 0.5;
-      vec2 uvFor6Faces = fract((eacUv * uTexScale) + vTexOffset);
+      vec2 uvFor6Faces = (eacUv * uTexScale) + vTexOffset;
 
       color = texture(sTexture, uvFor6Faces);
     }
@@ -95,23 +95,19 @@ found in the LICENSE file.
           1.0, 0.0,
           0.0, 0.0,
 
-          // Bottom face - back
-          // 1.0, 1.0,
-          // 0.0, 1.0,
-          // 0.0, 0.0,
-          // 1.0, 0.0,
+          // Back face
           0.0, 1.0,
           1.0, 1.0,
           1.0, 0.0,
           0.0, 0.0,
 
           // Top face
+          0.0, 1.0,
           1.0, 1.0,
           1.0, 0.0,
           0.0, 0.0,
-          0.0, 1.0,
 
-          // Back face - bottom
+          // Bottom face
           0.0, 1.0,
           1.0, 1.0,
           1.0, 0.0,
@@ -136,53 +132,46 @@ found in the LICENSE file.
         /* clang-format off */
         return new Float32Array([
           // Front face
-          3 / 8, 1/3+EPSILON,
-          3 / 8, 1/3+EPSILON,
-          3 / 8, 1/3+EPSILON,
-          3 / 8, 1/3+EPSILON,
+          1 / 3, (1 / 2) + EPSILON,
+          1 / 3, (1 / 2) + EPSILON,
+          1 / 3, (1 / 2) + EPSILON,
+          1 / 3, (1 / 2) + EPSILON,
 
-          // Bottom face - back
-          // 0, (1 / 2) + EPSILON,
-          // 0, (1 / 2) + EPSILON,
-          // 0, (1 / 2) + EPSILON,
-          // 0, (1 / 2) + EPSILON,
-          7 / 8, 1/3+EPSILON,
-          7 / 8, 1/3+EPSILON,
-          7 / 8, 1/3+EPSILON,
-          7 / 8, 1/3+EPSILON,
-          // 1, EPSILON,
-          // 1, EPSILON,
-          // 1, EPSILON,
+          // Back face
+          2 / 3, (1 / 2) + EPSILON,
+          2 / 3, (1 / 2) + EPSILON,
+          2 / 3, (1 / 2) + EPSILON,
+          2 / 3, (1 / 2) + EPSILON,
 
           // Top face
-          3 / 8, 0,
-          3 / 8, 0,
-          3 / 8, 0,
-          3 / 8, 0,
+          2 / 3, EPSILON,
+          2 / 3, EPSILON,
+          2 / 3, EPSILON,
+          2 / 3, EPSILON,
 
-          // Back face - bottom
-          3 / 8, (2 / 3) + EPSILON,
-          3 / 8, (2 / 3) + EPSILON,
-          3 / 8, (2 / 3) + EPSILON,
-          3 / 8, (2 / 3) + EPSILON,
+          // Bottom face
+          0, (1 / 2) + EPSILON,
+          0, (1 / 2) + EPSILON,
+          0, (1 / 2) + EPSILON,
+          0, (1 / 2) + EPSILON,
 
           // Right face
-          5 / 8, 1/3+EPSILON,
-          5 / 8, 1/3+EPSILON,
-          5 / 8, 1/3+EPSILON,
-          5 / 8, 1/3+EPSILON,
+          0, EPSILON,
+          0, EPSILON,
+          0, EPSILON,
+          0, EPSILON,
 
           // Left face
-          1 / 8, 1/3 + EPSILON,
-          1 / 8, 1/3 + EPSILON,
-          1 / 8, 1/3 + EPSILON,
-          1 / 8, 1/3 + EPSILON,
+          1 / 3, EPSILON,
+          1 / 3, EPSILON,
+          1 / 3, EPSILON,
+          1 / 3, EPSILON,
         ]);
         /* clang-format on */
       }
 
       function getScale() {
-        return { x: 1 / 4, y: (1 / 3) - (3 * EPSILON) };
+        return { x: 1 / 3, y: (1 / 2) - (2 * EPSILON) };
       };
 
       function loadImageSource(onLoad) {
@@ -203,7 +192,7 @@ found in the LICENSE file.
           isReady(onLoad);
         });
         videoElement.src =
-          "images/elephants.mp4";
+          "images/cube_3x2.mp4";
         videoElement.loop = true;
         createPresentationButton(videoElement);
       };
