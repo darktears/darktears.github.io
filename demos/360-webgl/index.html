@@ -35,16 +35,13 @@ found in the LICENSE file.
 
     layout(location = POSITION_LOCATION) in vec3 position;
     layout(location = TEXCOORD_LOCATION) in vec2 texcoord;
-    layout(location = TEX_OFFSET_LOCATION) in vec2 texOffset;
 
     out vec2 vUv;
-    out vec2 vTexOffset;
     out vec3 vPosition;
 
     void main()
     {
       vUv = texcoord;
-      vTexOffset = texOffset;
       vPosition = vec3(mvMatrix * vec4(position, 1.0));
       gl_Position = pMatrix * mvMatrix * vec4(position, 1.0);
     }
@@ -60,21 +57,12 @@ found in the LICENSE file.
 
     uniform sampler2D sTexture;
     uniform vec2 uTexScale;
-
     in vec2 vUv;
-    in vec2 vTexOffset;
-    in vec3 vPosition;
-
     out vec4 color;
 
     void main()
     {
-      vec2 homogeneouseUv = (vUv * 2.) - 1.;
-      // Get UV on the EAC projection
-      vec2 eacUv = (INV_PI_2 * atan(homogeneouseUv)) + 0.5;
-      vec2 uvFor6Faces = fract((eacUv * uTexScale) + vTexOffset);
-
-      color = texture(sTexture, uvFor6Faces);
+      color = texture(sTexture, vUv);
     }
   </script>
   <script src="node_modules/webxr-polyfill/build/webxr-polyfill.min.js"></script>

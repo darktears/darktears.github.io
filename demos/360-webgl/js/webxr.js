@@ -13,8 +13,9 @@ if (!navigator.xr) {
 }
 
 const CAMERA_SETTINGS = function() {
-  return {fov : 60 * Math.PI / 180, near : 0.01, far : 10000};
+  return {fov : 65 * Math.PI / 180, near : 0.1, far : 100};
 }();
+
 
 class WebXR {
   constructor() {
@@ -49,9 +50,48 @@ class WebXR {
     }
 
     this.initProgram();
+    this.initModelData();
     this.setVertexArray();
     this.initTexture();
     this.initRenderVariables();
+
+  }
+
+  initModelData() {
+    var latitudeBands = 60;
+    var longitudeBands = 60;
+    var radius = 2;
+    var ANGLE_CORRECTION_FOR_CENTER_ALIGN = -0.5 * Math.PI;
+    let latIdx;
+    let lngIdx;
+    this.textureCoordData_ = [];
+    this.vertexPositionData_ = [];
+    this.indexData_ = [];
+    for (latIdx = 0; latIdx <= latitudeBands; latIdx++) {
+      const theta = -1.0*(latIdx / latitudeBands - 0.5) * Math.PI;
+      const sinTheta = Math.sin(theta);
+      const cosTheta = Math.cos(theta);
+
+      for (lngIdx = 0; lngIdx <= longitudeBands; lngIdx++) {
+        const phi = -1.0*(lngIdx / longitudeBands - 0.5) * 2 * Math.PI - ANGLE_CORRECTION_FOR_CENTER_ALIGN;
+        const sinPhi = Math.sin(phi);
+        const cosPhi = Math.cos(phi);
+        const x = cosPhi * cosTheta;
+        const y = sinTheta;
+        const z = -sinPhi * cosTheta;
+        const u = lngIdx / longitudeBands;
+        const v = latIdx / latitudeBands;
+
+        this.textureCoordData_.push(u, v);
+        this.vertexPositionData_.push(radius * x, radius * y, radius * z);
+
+        if (lngIdx !== longitudeBands && latIdx !== latitudeBands) {
+          const a = latIdx * (longitudeBands + 1) + lngIdx;
+          const b = a + longitudeBands + 1;
+          this.indexData_.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+      }
+    }
   }
 
   checkXRSupport() {
@@ -155,91 +195,35 @@ class WebXR {
     this.gl_.cullFace(this.gl_.BACK);
   }
 
+
   setVertexArray() {
-    /* clang-format off */
-    // -- Init buffers
-    const positions = new Float32Array([
-      // Front face
-      -1.0, -1.0, -1.0,
-      1.0, -1.0, -1.0,
-      1.0, 1.0, -1.0,
-      -1.0, 1.0, -1.0,
-
-      // Back face
-      1.0, -1.0, 1.0,
-      -1.0, -1.0, 1.0,
-      -1.0, 1.0, 1.0,
-      1.0, 1.0, 1.0,
-
-      // Top face
-      -1.0, 1.0, -1.0,
-      1.0, 1.0, -1.0,
-      1.0, 1.0, 1.0,
-      -1.0, 1.0, 1.0,
-
-      // Bottom face
-      -1.0, -1.0, 1.0,
-      1.0, -1.0, 1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-
-      // Right face
-      1.0, -1.0, -1.0,
-      1.0, -1.0, 1.0,
-      1.0, 1.0, 1.0,
-      1.0, 1.0, -1.0,
-
-      // Left face
-      -1.0, -1.0, 1.0,
-      -1.0, -1.0, -1.0,
-      -1.0, 1.0, -1.0,
-      -1.0, 1.0, 1.0
-    ]);
     /* clang-format on */
     this.vertexPosBuffer_ = this.gl_.createBuffer();
     this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, this.vertexPosBuffer_);
-    this.gl_.bufferData(this.gl_.ARRAY_BUFFER, positions, this.gl_.STATIC_DRAW);
+    this.gl_.bufferData(this.gl_.ARRAY_BUFFER, new Float32Array(this.vertexPositionData_), this.gl_.STATIC_DRAW);
     this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, null);
 
-    const texCoords = stratage.getTexCoords();
+    //const texCoords = stratage.getTexCoords();
     this.vertexTexBuffer_ = this.gl_.createBuffer();
     this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, this.vertexTexBuffer_);
-    this.gl_.bufferData(this.gl_.ARRAY_BUFFER, texCoords, this.gl_.STATIC_DRAW);
+    this.gl_.bufferData(this.gl_.ARRAY_BUFFER, new Float32Array(this.textureCoordData_), this.gl_.STATIC_DRAW);
     this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, null);
 
-    const texOffsetCoords = stratage.getTexOffsetCoords();
-    this.vertexTexOffsetBuffer_ = this.gl_.createBuffer();
-    this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, this.vertexTexOffsetBuffer_);
-    this.gl_.bufferData(this.gl_.ARRAY_BUFFER, texOffsetCoords,
-                        this.gl_.STATIC_DRAW);
-    this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, null);
 
     // Element buffer
     this.indexBuffer_ = this.gl_.createBuffer();
     this.gl_.bindBuffer(this.gl_.ELEMENT_ARRAY_BUFFER, this.indexBuffer_);
 
-    const cubeVertexIndices = [
-      0,  1,  2,  0,  2,  3,  // front
-      4,  5,  6,  4,  6,  7,  // back
-      8,  9,  10, 8,  10, 11, // top
-      12, 13, 14, 12, 14, 15, // bottom
-      16, 17, 18, 16, 18, 19, // right
-      20, 21, 22, 20, 22, 23  // left
-    ];
+
 
     // Now send the element array to GL
     this.gl_.bufferData(this.gl_.ELEMENT_ARRAY_BUFFER,
-                        new Uint16Array(cubeVertexIndices),
+                        new Uint16Array(this.indexData_),
                         this.gl_.STATIC_DRAW);
 
-    // -- Init VertexArray
-    this.vertexArray_ = this.gl_.createVertexArray();
-    this.gl_.bindVertexArray(this.vertexArray_);
-
-    // set with GLSL layout qualifier
     const vertexPosLocation = 0;
     const vertexTexLocation = 1;
-    const vertexTexOffsetLocation = 2;
+
 
     this.gl_.enableVertexAttribArray(vertexPosLocation);
     this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, this.vertexPosBuffer_);
@@ -253,15 +237,6 @@ class WebXR {
                                  0);
     this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, null);
 
-    this.gl_.enableVertexAttribArray(vertexTexOffsetLocation);
-    this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, this.vertexTexOffsetBuffer_);
-    this.gl_.vertexAttribPointer(vertexTexOffsetLocation, 2, this.gl_.FLOAT,
-                                 false, 0, 0);
-    this.gl_.bindBuffer(this.gl_.ARRAY_BUFFER, null);
-
-    this.gl_.bindBuffer(this.gl_.ELEMENT_ARRAY_BUFFER, this.indexBuffer_);
-
-    this.gl_.bindVertexArray(null);
   }
 
   initTexture() { stratage.loadImageSource(this.onLoadImageSource.bind(this)); }
@@ -396,9 +371,8 @@ class WebXR {
 
     this.gl_.activeTexture(this.gl_.TEXTURE0);
     this.gl_.bindTexture(this.gl_.TEXTURE_2D, this.texture_);
-
-    this.gl_.drawElementsInstanced(this.gl_.TRIANGLES, 36,
-                                   this.gl_.UNSIGNED_SHORT, 0, 1);
+    this.gl_.drawElements(
+      this.gl_.TRIANGLES, 21600, this.gl_.UNSIGNED_SHORT, 0);
   }
 
   destructuring() {
