@@ -4,7 +4,7 @@
   "description": "This is a demo for WebXR Device API.",
   "main": "index.html",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "es-dev-server --node-resolve --app-index index.html --open --watch"
   },
   "repository": {
     "type": "git",
@@ -12,12 +12,15 @@
   },
   "keywords": [
     "XR",
-    "VR"
+    "VR",
+    "WebXR"
   ],
   "author": "Alexis Menard",
   "license": "BSD-2-Clause",
+  "devDependencies": {
+    "es-dev-server": "^1.23.1"
+  },
   "dependencies": {
-    "three": "^0.102.0",
-    "webxr-polyfill": "^1.0.13"
+    "three": "^0.111.0"
   }
 }

@@ -18,8 +18,6 @@
 
 'use strict';
 
-//var polyfill = new WebXRPolyfill();
-
 const Direction = {
   Stopped: 0,
   Left: 1,
@@ -90,7 +88,7 @@ class Demo {
   _enableKeyboardMouse() {
     if (!this._hasPointerLock())
       return;
-    this._controls = new THREE.PointerLockControls(this._camera);
+    this._controls = new THREE.PointerLockControls(this._camera, document.body);
     this._scene.add(this._controls.getObject());
     this._controls.getObject().position.y = 1;
     this._camera.lookAt(new THREE.Vector3(0, 1, 1));
@@ -268,7 +266,7 @@ class Demo {
     this._magicWindowCanvas = document.createElement("canvas");
     let magicWindowContext = this._magicWindowCanvas.getContext('xrpresent');
     // Check to see if the UA can support a non-immersive sessions with the given output context.
-    return navigator.xr.supportsSession('inline')
+    return navigator.xr.isSessionSupported('inline')
         .then(() => {
           this._activateMagicWindow(magicWindowContext);
           this._magicWindowCanvas.width = this._width;
@@ -288,7 +286,7 @@ class Demo {
     this._loadViveMeshes();
     this._loadDaydreamMeshes();
     console.log(navigator.xr)
-    navigator.xr.supportsSession('immersive-vr').then(() => {
+    navigator.xr.isSessionSupported('immersive-vr').then(() => {
       this._createPresentationButton();
       //this._checkMagicWindowSupport();
     }).catch((err) => {
@@ -552,7 +550,7 @@ class Demo {
   async _onSessionEnded() {
     this._xrSession = null;
     this._xrReferenceSpace = null;
-    this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, null);
+    this._renderer.setFramebuffer(null);
     this._activeControllers = 0;
     for (let controller of this._controllers) {
       this._scene.remove(controller);
@@ -583,13 +581,12 @@ class Demo {
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
 
       // Reference space for inline is stationary with eye-level.
-      this._xrReferenceSpace = await this._xrSession.requestReferenceSpace({ type:'stationary', subtype:'eye-level' });
+      this._xrReferenceSpace = await this._xrSession.requestReferenceSpace('local');
 
       // Create the WebGL layer.
-      await this._renderer.context.makeXRCompatible();
-      this._renderer.domElement.hidden = true;
-      this._magicWindowCanvas.hidden = false;
-      let layer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      let gl = this._renderer.getContext();
+      await gl.makeXRCompatible();
+      let layer = new XRWebGLLayer(this._xrSession, gl);
       this._xrSession.updateRenderState({ baseLayer: layer });
       this._userPosition.set(0, 0 ,0);
 
@@ -607,26 +604,33 @@ class Demo {
   async _activateVR() {
     try {
       // ‘Immersive’ means rendering into the HMD.
-      this._xrSession = await navigator.xr.requestSession('immersive-vr');
+      this._xrSession = await navigator.xr.requestSession('immersive-vr', {
+        // 3DoF
+        requiredFeatures: ['local-floor'],
+        // 6 DoF
+        optionalFeatures: ['bounded-floor']
+      });
       this._xrSession.addEventListener('end', _ => { this._onSessionEnded(); });
 
       this._xrSession.depthNear = Demo.CAMERA_SETTINGS.near;
       this._xrSession.depthFar = Demo.CAMERA_SETTINGS.far;
 
-      // Reference frame for Immersive. This should be bounded but it doesn't work yet on Chrome.
-      this._xrReferenceSpace = await this._xrSession.requestReferenceSpace({ type:'stationary', subtype:'floor-level' });
-      this._xrSession.addEventListener('select', (ev) => {
-          this._handleSelect(ev.inputSource, ev.frame, this._xrReferenceSpace);
-      });
+      try {
+        this._xrReferenceSpace = await this._xrSession.requestReferenceSpace('bounded-floor');
+      } catch (error) {
+        this._xrReferenceSpace = await this._xrSession.requestReferenceSpace('local-floor');
+      };
+
+      this._xrSession.addEventListener('select', (...args) => this._handleSelect(...args));
 
       // Create the WebGL layer.
-      await this._renderer.context.makeXRCompatible();
+      await this._renderer.getContext().makeXRCompatible();
       this._renderer.domElement.hidden = false;
       if (this._magicWindowCanvas) {
         this._magicWindowCanvas.hidden = true;
         this._hideTouchControls();
       }
-      let layer = new XRWebGLLayer(this._xrSession, this._renderer.context);
+      let layer = new XRWebGLLayer(this._xrSession, this._renderer.getContext());
       this._xrSession.updateRenderState({ baseLayer: layer });
 
       // Enter the rendering loop.
@@ -706,11 +710,7 @@ class Demo {
     let pose = xrFrame.getViewerPose(this._xrReferenceSpace);
     if (pose) {
       let xrLayer = this._xrSession.renderState.baseLayer;
-
-      this._renderer.setSize(xrLayer.framebufferWidth, xrLayer.framebufferHeight, false);
-
-      this._renderer.context.bindFramebuffer(this._renderer.context.FRAMEBUFFER, xrLayer.framebuffer);
-
+      this._renderer.setFramebuffer(xrLayer.framebuffer);
       this._updateInput(xrFrame);
 
       for (let xrView of pose.views) {
@@ -833,9 +833,8 @@ class Demo {
     viewMatrix.premultiply(translationInViewMatrix);
   }
 
-  _handleSelect(inputSource, frame, referenceSpace) {
-    let rayPose = frame.getPose(inputSource.targetRaySpace, referenceSpace);
-
+  _handleSelect(event) {
+    let rayPose = event.frame.getPose(event.inputSource.targetRaySpace, this._xrReferenceSpace);
     if (!rayPose)
       return;
     let pointerMatrix = new THREE.Matrix4();
@@ -850,10 +849,8 @@ class Demo {
       // We never move in the y direction in this demo.
       position.y = 0;
       position.negate();
-      referenceSpace.originOffset = new XRRigidTransform(
-        new DOMPoint(position.x, position.y, position.z, 1),
-        new DOMPoint()
-      );
+      this._xrReferenceSpace = this._xrReferenceSpace.getOffsetReferenceSpace(
+        new XRRigidTransform({ x: position.x, y: position.y, z: position.z }));
       break;
     }
   }
@@ -870,7 +867,7 @@ class Demo {
   }
 
   _updateInput(xrFrame) {
-    let inputSources = this._xrSession.getInputSources();
+    let inputSources = this._xrSession.inputSources;
     let intersected = false;
     for (let inputSource of inputSources) {
       let gripPose = xrFrame.getPose(inputSource.gripSpace, this._xrReferenceSpace);
@@ -994,7 +991,7 @@ class Demo {
     let vertices = new Float32Array(2 * 3);
     // Z coordinate for the second point.
     vertices[5] = length;
-    laser.geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    laser.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
     laser.geometry.attributes.position.array = vertices
     laser.geometry.verticesNeedUpdate = true;
     laser.visible = true;
@@ -1036,7 +1033,7 @@ class Demo {
         z = direction.z * t;
       }
 
-      laser.geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      laser.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
       laser.geometry.attributes.position.array = vertices;
       laser.geometry.verticesNeedUpdate = true;
       this._activeLasers = this._activeLasers + 1;
