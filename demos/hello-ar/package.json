@@ -1,0 +1,46 @@
+{
+  "name": "Hello-AR",
+  "version": "1.0.0",
+  "description": "Hello AR is a simple application to test WebXR Device API.",
+  "main": "index.html",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.devtools.intel.com/iags-ssp-web-platform-team/webxr-samples"
+  },
+  "scripts": {
+    "start": "es-dev-server --node-resolve --app-index index.html --open --watch --babel",
+    "start:build": "es-dev-server dist/ --open",
+    "build": "rimraf dist && rollup -c rollup.config.js"
+  },
+  "keywords": [
+    "XR",
+    "AR",
+    "WebXR"
+  ],
+  "author": "Alexis Menard",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+    "@babel/core": "^7.7.2",
+    "@babel/plugin-proposal-class-properties": "^7.7.0",
+    "@babel/plugin-proposal-decorators": "^7.7.0",
+    "@open-wc/building-rollup": "^0.12.12",
+    "@webcomponents/webcomponentsjs": "^2.3.0",
+    "es-dev-server": "^1.23.1",
+    "rollup": "^1.26.3",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  },
+  "dependencies": {
+    "@material/mwc-button": "^0.10.0",
+    "@material/mwc-icon": "^0.10.0",
+    "@material/mwc-icon-button": "^0.10.0",
+    "@material/mwc-linear-progress": "^0.10.0",
+    "@material/mwc-snackbar": "^0.10.0",
+    "lit-element": "^2.2.1",
+    "three": "^0.110.0",
+    "rollup-plugin-copy-glob": "^0.3.1",
+    "rollup-plugin-cpy": "^2.0.1",
+    "workbox-build": "^4.3.1",
+    "workbox-sw": "^4.3.1"
+  }
+}

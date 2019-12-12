@@ -1,0 +1,11 @@
+body {
+  padding: 0;
+  margin: 0;
+  user-select: none;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  touch-action: none;
+  background-color: black;
+  font-family: 'Roboto', sans-serif;
+}
