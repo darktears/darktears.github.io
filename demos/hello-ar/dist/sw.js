@@ -107,11 +107,11 @@ self.__precacheManifest = [
   },
   {
     "url": "index.html",
-    "revision": "783d5ccdc1dab726a089eb0592c069ab"
+    "revision": "9e7b9dfb491be00480b8f7bfee2bfa8b"
   },
   {
-    "url": "main-app-b8f100ad.js",
-    "revision": "aa5ebe487ca905e6659b0eeb461c1616"
+    "url": "main-app-317faa47.js",
+    "revision": "101e3015c3550c17d872b7559a13d348"
   },
   {
     "url": "models/gltf/astronaut/textures/material_0_normal.png",
@@ -150,8 +150,8 @@ self.__precacheManifest = [
     "revision": "ed55766050be285197b8f511eacedb62"
   },
   {
-    "url": "polyfills/webcomponents.cc3976af76b5e726e2a7e86686c930f1.js",
-    "revision": "6d41a7c92156aec243e9ce5680bdf517"
+    "url": "polyfills/webcomponents.dae9f79d9d6992b6582e204c3dd953d3.js",
+    "revision": "fe4a22f36087db029cd3f476a1935410"
   },
   {
     "url": "style.css",
