@@ -56,9 +56,6 @@ class Demo {
 
     this.clearContainer();
     this.createRenderer();
-
-    this._onResize = this._onResize.bind(this);
-    this._update = this._update.bind(this);
     this._onResize();
 
     this.createCamera();
@@ -66,7 +63,7 @@ class Demo {
     this.createMeshes();
 
     this._addEventListeners();
-    requestAnimationFrame(this._update);
+    requestAnimationFrame((...args) => this._update(...args));
 
     this._xrSession;
     this._xrReferenceSpace;
@@ -357,7 +354,7 @@ class Demo {
   }
 
   _addEventListeners() {
-    window.addEventListener('resize', this._onResize);
+    window.addEventListener('resize', () => this._onResize);
   }
 
   clearContainer() {
@@ -566,7 +563,7 @@ class Demo {
       this._scene.remove(cursor);
     }
     this._cursors = [];
-    requestAnimationFrame(this._update);
+    requestAnimationFrame((...args) => this._update(...args));
     if (this._magicWindowCanvas)
       this._activateMagicWindow(this._magicWindowCanvas.getContext('xrpresent'));
   }
@@ -593,7 +590,7 @@ class Demo {
       this._showTouchControls();
 
       // Enter the rendering loop.
-      this._xrSession.requestAnimationFrame(this._update);
+      this._xrSession.requestAnimationFrame((...args) => this._update(...args));
 
     } catch (error) {
       console.log("Error while requesting inline session : " + error);
@@ -636,7 +633,7 @@ class Demo {
       this._xrSession.updateRenderState({ baseLayer: layer });
 
       // Enter the rendering loop.
-      this._xrSession.requestAnimationFrame(this._update);
+      this._xrSession.requestAnimationFrame((...args) => this._update(...args));
 
     } catch (error) {
       console.log("Error while requesting the immersive session : " + error);
@@ -692,7 +689,7 @@ class Demo {
         this._updatePosition();
       }
       this._renderer.render(this._scene, this._camera);
-      return requestAnimationFrame(this._update);
+      return requestAnimationFrame((...args) => this._update(...args));
     }
     if (!xrFrame)
       return;
