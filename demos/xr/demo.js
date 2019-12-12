@@ -621,6 +621,8 @@ class Demo {
         this._xrReferenceSpace = await this._xrSession.requestReferenceSpace('local-floor');
       };
 
+      this._originReferenceSpace =  this._xrReferenceSpace;
+
       this._xrSession.addEventListener('select', (...args) => this._handleSelect(...args));
 
       // Create the WebGL layer.
@@ -654,13 +656,13 @@ class Demo {
 
     let movingDistance = 100.0 * delta;
     if ((this._movingDirection & Direction.Forward) === Direction.Forward)
-      this._velocity.z += movingDistance;
-    if ((this._movingDirection & Direction.Backward) === Direction.Backward)
       this._velocity.z -= movingDistance;
+    if ((this._movingDirection & Direction.Backward) === Direction.Backward)
+      this._velocity.z  += movingDistance;
     if ((this._movingDirection & Direction.Left) === Direction.Left)
-      this._velocity.x += movingDistance;
-    if ((this._movingDirection & Direction.Right) === Direction.Right)
       this._velocity.x -= movingDistance;
+    if ((this._movingDirection & Direction.Right) === Direction.Right)
+      this._velocity.x += movingDistance;
 
     controls_yaw.translateX(this._velocity.x * delta);
     controls_yaw.translateZ(this._velocity.z * delta);
@@ -695,13 +697,12 @@ class Demo {
     if (!xrFrame)
       return;
 
-    // Disable autoupdating because these values will be coming from the
-    // frameData data directly.
-    this._scene.matrixAutoUpdate = false;
-
     // Make sure not to clear the renderer automatically, because we will need
     // to render it ourselves twice, once for each eye.
     this._renderer.autoClear = false;
+
+    // Disable autoupdating because these values will be coming from WebXR.
+    this._camera.matrixAutoUpdate = false;
 
     // Clear the canvas manually.
     this._renderer.clear();
@@ -715,7 +716,7 @@ class Demo {
 
       for (let xrView of pose.views) {
         let viewport = xrLayer.getViewport(xrView);
-        this._renderEye(
+        this._renderView(
           xrView,
           viewport);
       }
@@ -726,34 +727,15 @@ class Demo {
     this._xrSession.requestAnimationFrame(this._update);
   }
 
-  _renderEye(xrView, viewport) {
-    // Set the left or right eye half.
+  _renderView(xrView, viewport) {
     this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
-
-    let viewMatrix = new THREE.Matrix4();
-    viewMatrix.fromArray(xrView.transform.inverse.matrix);
-
-    /*if (this._magicWindowCanvas && this._magicWindowCanvas.hidden === false) {
-      // This will adjust the position of the user depending if
-      // the keypad was pressed.
-      this._updateMagicWindowPosition(viewMatrix);
-      this._translateViewMatrix(viewMatrix, this._userPosition);
-    } else {
-      // We need to adjust the view matrix if the user was teleported.
-      let invertedTeleportTranslation = new THREE.Vector3();
-      invertedTeleportTranslation.copy(this._userPosition).negate();
-      this._translateViewMatrix(viewMatrix, invertedTeleportTranslation);
-    }*/
-    // Update the scene and camera matrices.
+    const viewMatrix = xrView.transform.inverse.matrix;
+    // Update the camera matrices.
     this._camera.projectionMatrix.fromArray(xrView.projectionMatrix);
-    this._camera.matrixWorldInverse.copy(viewMatrix);
-    this._scene.matrix.copy(viewMatrix);
+    this._camera.matrix.fromArray(viewMatrix).getInverse(this._camera.matrix);
+    this._camera.updateMatrixWorld(true);
 
-    // Tell the scene to update (otherwise it will ignore the change of matrix).
-    this._scene.updateMatrixWorld(true);
     this._renderer.render(this._scene, this._camera);
-    // Ensure that left eye calcs aren't going to interfere.
-    this._renderer.clearDepth();
   }
 
   _updateMagicWindowPosition(viewMatrix) {
@@ -806,33 +788,6 @@ class Demo {
     this._prevTime = time;
   }
 
-  _translateViewMatrix(viewMatrix, position) {
-    // Let's save the current position before working on it.
-    let positionInView = new THREE.Vector3(
-      position.x,
-      position.y,
-      position.z
-    );
-    let viewMatrixWithoutTranslation = new THREE.Matrix4();
-    viewMatrixWithoutTranslation.copy(viewMatrix);
-    // The reason we do this here is because the view matrix may have
-    // a position set, for example in a 6DoF system or on a 3 DoF
-    // system where the height is emulated. What we want to do here is
-    // to apply the view matrix on our user position.
-    viewMatrixWithoutTranslation.setPosition(new THREE.Vector3());
-    // The result below gives us the position after the rotation of the
-    // view has been applied. This will make the direction right.
-    positionInView.applyMatrix4(viewMatrixWithoutTranslation);
-    let translationInViewMatrix = new THREE.Matrix4();
-    // Let's build a translation matrix out of rotated position. We don't need to
-    // care about the rotation because we're going to apply that translation
-    // on the view matrix (which is rotated and translated).
-    translationInViewMatrix.makeTranslation(positionInView.x, positionInView.y, positionInView.z);
-    // pre-multiply because we want to translate before rotating. Otherwise we
-    // may end up with a wrong position.
-    viewMatrix.premultiply(translationInViewMatrix);
-  }
-
   _handleSelect(event) {
     let rayPose = event.frame.getPose(event.inputSource.targetRaySpace, this._xrReferenceSpace);
     if (!rayPose)
@@ -844,26 +799,21 @@ class Demo {
     let intersects = raycaster.intersectObject(this._floor);
     for (let intersect of intersects) {
       let position = new THREE.Vector3();
-      pointerMatrix.multiply(new THREE.Matrix4().makeTranslation(0, 0, -intersect.distance));
-      pointerMatrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+      position.copy(intersect.point);
       // We never move in the y direction in this demo.
       position.y = 0;
       position.negate();
-      this._xrReferenceSpace = this._xrReferenceSpace.getOffsetReferenceSpace(
+      this._xrReferenceSpace = this._originReferenceSpace.getOffsetReferenceSpace(
         new XRRigidTransform({ x: position.x, y: position.y, z: position.z }));
       break;
     }
   }
 
   _setupControllerRaycast(raycaster, rayMatrix) {
-    // We should probably use XRay here but the
-    // origin and direction doesn't really work here.
     let raycasterOrigin = new THREE.Vector3();
     let raycasterDestination = new THREE.Vector3(0, 0, -1);
-    let rayMatrixWorld = new THREE.Matrix4();
-    rayMatrixWorld.multiplyMatrices(this._scene.matrixWorld, rayMatrix);
-    raycasterOrigin.setFromMatrixPosition(rayMatrixWorld);
-    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(rayMatrixWorld).normalize());
+    raycasterOrigin.setFromMatrixPosition(rayMatrix);
+    raycaster.set(raycasterOrigin, raycasterDestination.transformDirection(rayMatrix).normalize());
   }
 
   _updateInput(xrFrame) {
