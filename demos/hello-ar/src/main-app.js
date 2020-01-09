@@ -27,12 +27,10 @@ import { Workbox } from 'workbox-window';
 import { AmbientLight, AnimationMixer, Box3, CircleGeometry, Clock, CubeTextureLoader,
         DirectionalLight, DoubleSide, Euler, GammaEncoding, Math as ThreeMath,
         Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera,
-        PCFSoftShadowMap, PlaneBufferGeometry, PlaneGeometry, Raycaster,
-        RingGeometry, Scene, ShadowMaterial, sRGBEncoding, TextureLoader,
-        Vector3, WebGLRenderer } from 'three';
+        PCFSoftShadowMap, PlaneBufferGeometry, PlaneGeometry,
+        PMREMGenerator, Raycaster, RingGeometry, Scene, ShadowMaterial, 
+        sRGBEncoding, TextureLoader, Vector3, WebGLRenderer } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { PMREMGenerator } from 'three/examples/jsm/pmrem/PMREMGenerator.js';
-import { PMREMCubeUVPacker } from 'three/examples/jsm/pmrem/PMREMCubeUVPacker.js';
 
 @customElement('main-app')
 export class MainApplication extends LitElement {
@@ -513,13 +511,9 @@ export class MainApplication extends LitElement {
       .setPath('./textures/cube/stars/')
       .load(urls, _ => {
         this._cubeMap.encoding = GammaEncoding;
-        let pmremGenerator = new PMREMGenerator(this._cubeMap);
-        pmremGenerator.update(this._renderer);
-        let pmremCubeUVPacker = new PMREMCubeUVPacker(pmremGenerator.cubeLods);
-        pmremCubeUVPacker.update(this._renderer);
-        this._cuberRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
+        let pmremGenerator = new PMREMGenerator(this._renderer);
+        this._cuberRenderTarget = pmremGenerator.fromEquirectangular(texture).texture;
         pmremGenerator.dispose();
-        pmremCubeUVPacker.dispose();
         this._createLights();
       });
     this._scene.add(this._camera);
