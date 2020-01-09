@@ -107,11 +107,11 @@ self.__precacheManifest = [
   },
   {
     "url": "index.html",
-    "revision": "d8631f60020f100564e8b55c7b67bea5"
+    "revision": "0ebe30b0bf4e33f1fb293c89d73c23fa"
   },
   {
-    "url": "main-app-b7528e11.js",
-    "revision": "085029cb7f93ce646ae0b99cf8cb190e"
+    "url": "main-app-5af5be27.js",
+    "revision": "c07dcfda5fe3c1a753b9c3ac0a0eeb4d"
   },
   {
     "url": "models/gltf/astronaut/textures/material_0_normal.png",

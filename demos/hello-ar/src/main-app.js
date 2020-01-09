@@ -510,9 +510,10 @@ export class MainApplication extends LitElement {
     this._cubeMap = new CubeTextureLoader()
       .setPath('./textures/cube/stars/')
       .load(urls, _ => {
-        this._cubeMap.encoding = GammaEncoding;
+        this._cubeMap.encoding = sRGBEncoding;
         let pmremGenerator = new PMREMGenerator(this._renderer);
-        this._cuberRenderTarget = pmremGenerator.fromEquirectangular(texture).texture;
+        pmremGenerator.compileCubemapShader();
+        this._cuberRenderTarget = pmremGenerator.fromCubemap(this._cubeMap);
         pmremGenerator.dispose();
         this._createLights();
       });
@@ -521,7 +522,7 @@ export class MainApplication extends LitElement {
 
   _createRenderer() {
     this._renderer = new WebGLRenderer({antialias: true});
-    this._renderer.gammaOutput = true;
+    this._renderer.outputEncoding = GammaEncoding;
     this._renderer.gammaFactor = 2.2;
     // Make sure not to clear the renderer automatically.
     this._renderer.autoClear = false;
