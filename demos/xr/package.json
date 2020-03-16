@@ -18,9 +18,9 @@
   "author": "Alexis Menard",
   "license": "BSD-2-Clause",
   "devDependencies": {
-    "es-dev-server": "^1.23.1"
+    "es-dev-server": "^1.45.1"
   },
   "dependencies": {
-    "three": "^0.111.0"
+    "three": "^0.114.0"
   }
 }
