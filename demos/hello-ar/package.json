@@ -39,7 +39,7 @@
     "@material/mwc-linear-progress": "^0.13.0",
     "@material/mwc-snackbar": "^0.13.0",
     "lit-element": "^2.2.1",
-    "three": "^0.114.0",
+    "three": "^0.137.0",
     "workbox-build": "^5.0.0",
     "workbox-sw": "^5.0.0"
   }
