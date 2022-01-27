@@ -21,6 +21,6 @@
     "es-dev-server": "^1.45.1"
   },
   "dependencies": {
-    "three": "^0.114.0"
+    "three": "^0.137.0"
   }
 }
